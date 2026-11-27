@@ -130,6 +130,14 @@ p mod 24 (Pisano period of F mod 6), and the good classes
 are exactly {13, 17, 19, 23}.
 *Priority note:* no earlier proof found (checked 2026-11-27).
 
+### A019335: Detlefs's primitive-root characterization — `a019335-detlefs/`
+Proves Detlefs's 2014 claims: (5^n mod k) has exact period
+k − 1 iff k is a prime with primitive root 5, and every such
+prime is ≡ 2 or 3 (mod 5) (quadratic reciprocity; the case
+5 | k is handled by the exact preperiod/period analysis —
+eventually 0 only for k = 5^e).
+*Priority note:* no earlier proof found (checked 2026-11-27).
+
 ### Detlefs's Möbius-iteration identities — `detlefs-mobius-iterations/`
 Proves all four of Detlefs's 2010 claims of the shape
 s(n) = a(n)/(a(n) + c) for Möbius iterations: A003462 (c = +1),
