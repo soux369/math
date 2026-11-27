@@ -39,6 +39,13 @@ Lean 4 formalization included.
 *Priority note:* the equivalence had only been asserted in an unrefereed
 note; first proof + formalization here, as far as we know.
 
+### A115807 ⊊ A048719 — `a115807-subset-a048719/`
+Settles the "Subset of A048719?" cross-reference question: 15k = C(27, k)
+implies both 3k = C(7, k) and 5k = C(5, k) (14 product states, 7 live);
+strictness witness 99. Lean 4 formalization included.
+*Priority note:* no earlier proof found; first published proof and
+formalization known to us (checked 2026-11-27).
+
 ## Conventions
 
 - One folder per result, named after the statement.
