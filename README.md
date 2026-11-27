@@ -69,6 +69,14 @@ included.
 *Priority note:* no earlier proof found; first published proof and
 formalization known to us (checked 2026-11-27).
 
+### A048719 ⊊ A115767 and A115768 = A115767 ∖ A048719 — `a048719-a115767-a115768/`
+Settles the "(?)" in OEIS A115767: A048719 is a proper subset
+(witness 11), and A115768 is exactly the difference. One-line
+algebraic proof via C(7, k) = (2k) XOR C(5, k). Lean 4 formalization
+included.
+*Priority note:* no earlier proof found; first published proof and
+formalization known to us (checked 2026-11-27).
+
 ## Conventions
 
 - One folder per result, named after the statement.
