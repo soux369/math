@@ -123,6 +123,13 @@ iff p^6 mod 210 = 1 (CRT across 210 = 2·3·5·7; for p > 7,
 p^6 mod 210 is 1 or 169 according to the mod-5 class).
 *Priority note:* no earlier proof found (checked 2026-11-27).
 
+### A191059: Detlefs's Fibonacci characterization — `a191059-detlefs/`
+Proves Detlefs's 2014 claim: (p|6) = -1 (Kronecker) iff
+(p mod 6)(F(p) mod 6) = 5 — both sides depend only on
+p mod 24 (Pisano period of F mod 6), and the good classes
+are exactly {13, 17, 19, 23}.
+*Priority note:* no earlier proof found (checked 2026-11-27).
+
 ## Conventions
 
 - One folder per result, named after the statement.
