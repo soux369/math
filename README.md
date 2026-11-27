@@ -83,6 +83,12 @@ primes ≡ 3 (mod 4) are exactly the indices k with
 binomial(prime(k), 3) odd (one application of Lucas's theorem).
 *Priority note:* no earlier proof found (checked 2026-11-27).
 
+### A036234: Detlefs's two binomial claims — `a036234-detlefs/`
+Proves Detlefs's 2013 claims decoding a(n) = π(n) + 1 via
+binomial(k·prime(i), prime(i)) mod prime(i) (Lucas's theorem;
+Bertrand's postulate for the primality criterion).
+*Priority note:* no earlier proof found (checked 2026-11-27).
+
 ## Conventions
 
 - One folder per result, named after the statement.
