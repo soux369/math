@@ -130,6 +130,14 @@ p mod 24 (Pisano period of F mod 6), and the good classes
 are exactly {13, 17, 19, 23}.
 *Priority note:* no earlier proof found (checked 2026-11-27).
 
+### Detlefs's Möbius-iteration identities — `detlefs-mobius-iterations/`
+Proves all four of Detlefs's 2010 claims of the shape
+s(n) = a(n)/(a(n) + c) for Möbius iterations: A003462 (c = +1),
+A007051 (c = −1), A168607 (c = −4; holds for all n ≥ 1, not only
+n > 1), A152011 (c = (−1)^n). Proof via the closed forms of the
+powers of [[2, 1], [1, 2]] and [[1, 2], [2, 1]].
+*Priority note:* no earlier proof found (checked 2026-11-27).
+
 ## Conventions
 
 - One folder per result, named after the statement.
