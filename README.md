@@ -61,6 +61,14 @@ Lean 4 formalization included.
 *Priority note:* no earlier proof found; first published proof and
 formalization known to us (checked 2026-11-27).
 
+### A048715 = Detlefs's characterization — `a048715-detlefs-characterization/`
+Proves Detlefs's 2024 "appears to be" description of A048715:
+7x = C(7, x) ⟺ (x AND 5x) = x and (x OR 3x)/x = 3, for x ≥ 1
+(both sides equal the bit-triple condition). Lean 4 formalization
+included.
+*Priority note:* no earlier proof found; first published proof and
+formalization known to us (checked 2026-11-27).
+
 ## Conventions
 
 - One folder per result, named after the statement.
