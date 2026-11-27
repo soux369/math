@@ -32,6 +32,13 @@ with witness m = 13. Lean 4 formalization included.
 trureturing; the contribution is the direct proof of the inclusion and
 its formalization.
 
+### A115801 ⊆ A391850 — `a115801-subset-a391850/`
+Proved via the equivalence 9k = C(25, k) ⟺ 15k = C(19, k) (8 coupled live
+state pairs), giving the inclusion with uniform witness m = 19.
+Lean 4 formalization included.
+*Priority note:* the equivalence had only been asserted in an unrefereed
+note; first proof + formalization here, as far as we know.
+
 ## Conventions
 
 - One folder per result, named after the statement.
