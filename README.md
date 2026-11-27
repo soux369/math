@@ -77,6 +77,12 @@ included.
 *Priority note:* no earlier proof found; first published proof and
 formalization known to us (checked 2026-11-27).
 
+### A080148: Detlefs's binomial characterization — `a080148-detlefs/`
+Proves Detlefs's 2011 "appears" comment: the positions of the
+primes ≡ 3 (mod 4) are exactly the indices k with
+binomial(prime(k), 3) odd (one application of Lucas's theorem).
+*Priority note:* no earlier proof found (checked 2026-11-27).
+
 ## Conventions
 
 - One folder per result, named after the statement.
