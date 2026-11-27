@@ -53,6 +53,14 @@ pairs); strictness witness 31. Lean 4 formalization included.
 *Priority note:* no earlier proof found; first published proof and
 formalization known to us (checked 2026-11-27).
 
+### A115805 ⊊ A115823 — `a115805-subset-a115823/`
+Settles the "by conjecture" containment: 13k = C(29, k) implies
+(8k) XOR (13k) = 21k, i.e. (8k) AND (13k) = 0 (13 dead + 6 trim state
+pairs; a one-step lookahead is essential); strictness witness 5.
+Lean 4 formalization included.
+*Priority note:* no earlier proof found; first published proof and
+formalization known to us (checked 2026-11-27).
+
 ## Conventions
 
 - One folder per result, named after the statement.
