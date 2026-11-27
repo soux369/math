@@ -1,0 +1,971 @@
+% Skeleton draft -- first pass: structure, theorem statements, results
+% table, and proof sketches grounded in the artifacts in
+% github.com/soux369/math (local clone: ~/workspace/projects/math).
+% Every numerical claim is copied from the folder cited in a comment
+% next to it.
+\documentclass[11pt]{article}
+
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage[margin=1in]{geometry}
+
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+
+\newcommand{\clmul}{C} % carryless multiplication, OEIS A048720
+
+\title{Resolving Gary Detlefs's Conjectures on OEIS Sequences:
+Finite-State and Elementary Methods}
+\author{Taiyo Moto}
+\date{\today} % TODO: fix date at submission
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Between 2010 and 2024, Gary Detlefs recorded a series of conjectural characterizations in the comments of OEIS entries, typically phrased ``appears to be'', and left them unproved. We settle seventeen of these claims (sixteen first resolutions and one direct reproof of a previously formalized inclusion). Six are inclusions involving sequences defined by carryless-arithmetic equations of the form $mk = C(a,k)$, existentially quantified variants thereof, or bitwise XOR identities; one is an exact bitwise characterization; seven are elementary characterizations of prime sequences; one item settles four identities for M\"obius iterations; and two claims are false, for which we give counterexamples together with corrected characterizations. The carryless inclusions are proved by a finite-state method: the two sides of an equation are tracked by a coupled automaton over carry and mask states, read least significant bit first, and the implication is reduced to a live/dead analysis of the reachable state pairs. The remaining claims are settled by elementary arguments (Lucas's theorem, Euler's criterion, the Chinese remainder theorem, the Pisano period of the Fibonacci sequence modulo~6, order arguments for primitive roots, and classical criteria for primes of the form $x^2 + ny^2$), and the four M\"obius identities by closed forms for powers of two $2 \times 2$ matrices. Every result has been verified by independent brute-force computation, and seven of the seventeen items are formalized in Lean~4 using only the standard axioms (\texttt{propext}, \texttt{Classical.choice}, \texttt{Quot.sound}). Machine-checkable artifacts for all results are available at \url{https://github.com/soux369/math} (DOI: \url{https://doi.org/10.5281/zenodo.24591537}).
+\end{abstract}
+
+\section{Introduction}
+
+Gary Detlefs is a prolific contributor of comments to the On-Line Encyclopedia of Integer Sequences (OEIS). In a number of entries he proposed exact descriptions of sequences---often of sequences defined by equations in carryless arithmetic (multiplication in $\mathrm{GF}(2)[X]$, OEIS~A048720)---phrased as ``appears to be'' or recorded in cross-references as ``by conjecture'' or with a literal ``(?)''. These claims, dating from 2010 to 2024, were supported by numerical evidence but, with the exception of the inclusion in Section~3.1 (for which a stronger equivalence was previously formalized in Lean by \texttt{trureturing}~\cite{trureturing2026}; we give a direct 10-state reproof), had no published proofs as far as we have been able to determine. This paper settles seventeen of them.
+
+Throughout, $C(a,b)$ denotes carryless multiplication (OEIS~A048720): the product in $\mathrm{GF}(2)[X]$, i.e.\ ordinary multiplication with all carries discarded. For nonnegative integers $a,b \in \mathbb{Z}_{\ge 0}$, we write $a \mathbin{\mathrm{AND}} b$, $a \mathbin{\mathrm{OR}} b$, and $a \mathbin{\mathrm{XOR}} b$ (also $a \oplus b$) for bitwise conjunction, disjunction, and exclusive-or on their binary expansions. We write $\mathrm{prime}(k)$ for the $k$-th prime ($\mathrm{prime}(1) = 2$), $\pi(n)$ for the number of primes $\le n$, and $\mathrm{Fib}(n)$ for the Fibonacci sequence indexed by $\mathrm{Fib}(0) = 0$, $\mathrm{Fib}(1) = 1$, and $\mathrm{Fib}(n+1) = \mathrm{Fib}(n) + \mathrm{Fib}(n-1)$. Several of the sequences below have the form $\{k : mk = C(a,k)\}$ for small constants $m$ and $a$, where the left-hand side is an ordinary product.
+
+Table~1 summarizes the seventeen results. Section~2 describes the three proof methods, Section~3 presents the results (with complete finite-state certificates in Appendix~\ref{app:automata}), Section~4 records the Lean~4 formalization status, and Section~5 gives priority notes for related independent work.
+
+\begin{table}[ht]
+\centering
+\small
+% Every row is grounded in the folder README cited at the start of the
+% corresponding subsection of Section 3.
+\begin{tabular}{@{}llll@{}}
+\toprule
+Sequence(s) & Detlefs's claim & Verdict & Method \\
+\midrule
+A115770, A391740 & inclusion ``by conjecture'' & true ($\subseteq$); direct reproof~\cite{trureturing2026}
+  & automata, 10 state pairs \\
+A115801, A391850 & inclusion (implicit) & true ($\subseteq$)
+  & automata, 8 live pairs \\
+A115807, A048719 & ``Subset of A048719?'' & true, strict (witness $99$)
+  & automata, 14 states \\
+A115876, A115874 & ``Subset of A115874?'' & true, strict (witness $31$)
+  & automata, 40 states \\
+A115805, A115823 & containment ``by conjecture'' & true, strict
+  (witness $5$) & automata, 13 dead + 6 trim \\
+A048719, A115767, A115768 & superset + ``(?)'' terms & proper inclusion;
+  A115768 $=$ difference & algebra \\
+A048715 & characterization (2024) & true & bit-triple condition \\
+A080148 & binomial characterization (2011) & true & Lucas \\
+A036234 & two binomial claims (2013) & true & Lucas + Bertrand \\
+A033199, A084865 & Fibonacci characterizations (2014) & true
+  & Pisano period 24 + Cox \\
+A067793 & equality with $S(n)\equiv 0$ set (2011) & \textbf{false}
+  ($n=385$); corrected & elementary \\
+A014062 & restricted solution set (2013/2015) & \textbf{false}
+  ($n=16843^4$) & Wolstenholme criterion \\
+A191060 & period $2$ of $p^{5n} \bmod 11$ (2014) & true
+  & Euler's criterion \\
+A045468 & $p^6 \bmod 210 = 1$ (2011) & true
+  & CRT over $2 \cdot 3 \cdot 5 \cdot 7$ \\
+A191059 & Kronecker symbol via Fibonacci (2014) & true
+  & Pisano period 24 \\
+A019335 & exact period of $5^n \bmod k$ (2014) & true (both parts)
+  & order arguments \\
+A003462, A007051, A168607, A152011 & M\"obius closed forms (2010)
+  & true (all four) & matrix closed forms \\
+\bottomrule
+\end{tabular}
+\caption{The seventeen resolved claims.}
+\label{tab:results}
+\end{table}
+
+\section{Methods}
+\label{sec:methods}
+
+\subsection{The state-pair automaton method}
+% Grounded in: the proof descriptions shared by the six carryless
+% folders, stated most explicitly in a115774-subset-a115772/README.md
+% (excluded result, same method) and a115807-subset-a048719/README.md.
+Let $a \ge 1$ and $b \ge 1$, and consider an equation $ak = C(b,k)$ processed bit by bit from the least significant bit. After the low $t$ bits $u = k \bmod 2^t$ of $k$ have been read, keep the state $(c,m)$ with $c = \lfloor au/2^t \rfloor$ (the pending carry of the ordinary product) and $m = \lfloor C(b,u)/2^t \rfloor$ (the pending mask of the carryless product). Since $u < 2^t$, we have $0 \le c < a$ and $0 \le m < 2^{\lfloor \log_2 b \rfloor + 1}$, so the state space is finite.
+
+The next bit $x \in \{0,1\}$ of $k$ matches at position $t$ on both sides if and only if
+\[
+  c + ax \equiv m \oplus bx \pmod{2}
+  \iff c - m \equiv (b - a)x \pmod{2}.
+\]
+In every application in this paper, both $a$ and $b$ are odd, so $a \equiv b \pmod{2}$ and the bit-matching condition simplifies to the $x$-independent parity test $c \equiv m \pmod{2}$. When this holds, the state updates by
+\[
+  c' = \lfloor (c + ax)/2 \rfloor, \qquad m' = \lfloor (m \oplus bx)/2 \rfloor.
+\]
+After all bits of $k$ have been read, the equation $ak = C(b,k)$ holds if and only if every bit position matched along the run and the final state satisfies $c = m$. Appendix~\ref{app:automata} uses the equivalent backward formulation, in which a state $(c, m)$ represents the shifted equation $ak + c = C(b,k) \oplus m$ on the remaining higher bits; both framings give the same update rule and the same acceptance condition $c = m$.
+
+To prove an implication between two such equations (or between an
+equation and a bitwise condition such as $(8k) \mathbin{\mathrm{AND}}
+(13k) = 0$), one runs the automata \emph{coupled}: a state is a tuple
+of the states of the hypothesis and conclusion sides. Reachable
+coupled states are classified as \emph{live} (the hypothesis can still
+hold and the conclusion is forced bit by bit) or \emph{dead} (the
+hypothesis equation is unsatisfiable from that state for every
+continuation, typically by a parity obstruction $c \not\equiv m
+\pmod 2$). If every reachable coupled state either is live with
+matching conclusion bits and terminal condition $c_{\mathrm{hyp}} =
+m_{\mathrm{hyp}} \Rightarrow c_{\mathrm{con}} = m_{\mathrm{con}}$, or is
+dead, then strong induction on $k$ gives the implication for all $k$.
+
+One subtlety recurs: the conclusion property need not be a purely
+local consequence of the hypothesis at a single bit position. In
+Section~\ref{sec:a115805} a one-step lookahead (the live/dead
+distinction propagated one step) is essential.
+
+The state spaces in our applications are small (at most a few dozen reachable states), so the analysis is a finite check and every finite-state proof in Sections~3.1--3.5 is self-contained: Appendix~\ref{app:automata} lists the complete reachable state sets, live/dead classifications, and transition tables for each coupled automaton, allowing direct verification of the induction without external software. The check is reproduced independently by the verification script in each folder, and Lean~4 formalizations of most cases are also archived in the repository (Section~4).
+
+\subsection{Elementary methods for the prime and Fibonacci claims}
+% Grounded in: a080148-detlefs, a036234-detlefs,
+% a033199-a084865-detlefs folder READMEs.
+The claims about primes and Fibonacci numbers are settled by three
+classical tools. (i)~\emph{Lucas's theorem}: for prime $p$,
+$\binom{kp}{p} \equiv k \pmod p$, and modulo $2$ the parity of
+$\binom{p}{3}$ reads off the two lowest binary digits of $p$.
+(ii)~\emph{Pisano periods}: the Fibonacci sequence modulo $6$ has
+period $24$, so $\mathrm{Fib}(p) \bmod 6$ depends only on $p \bmod 24$,
+reducing Detlefs's Fibonacci conditions to a finite residue table.
+(iii)~Classical form criteria: for discriminant $-24$, genus theory gives, for every prime $p > 3$, $p = x^2 + 6y^2 \iff p \equiv 1, 7 \pmod{24}$ and $p = 2x^2 + 3y^2 \iff p \equiv 5, 11 \pmod{24}$~\cite[Ch.~1, \S\S 2--3]{Cox2013}; these are cited, not reproved. Bertrand's postulate is used once
+(Section~\ref{sec:elem-primes}).
+
+Three further elementary tools settle the claims in
+Section~\ref{sec:elem-primes}: \emph{Euler's criterion}
+($p^5 \bmod 11$ is the Legendre symbol $(p|11)$); the \emph{Chinese
+remainder theorem} across the prime divisors of
+$210 = 2 \cdot 3 \cdot 5 \cdot 7$, where only the modulo-$5$
+component is restrictive since $\varphi(q) \mid 6$ for
+$q \in \{2, 3, 7\}$; the \emph{Kronecker symbol} $(n|6)$, which
+like $\mathrm{Fib}(n) \bmod 6$ depends only on $n \bmod 24$; and
+\emph{order arguments} for primitivity
+($\mathrm{ord}_k(5) \mid \varphi(k) \le k - 1$), with quadratic
+reciprocity excluding $p \equiv \pm 1 \pmod 5$.
+
+\subsection{The M\"obius matrix method}
+% Grounded in: detlefs-mobius-iterations/README.md, Proof.
+A first-order rational iteration $s(n) = (\alpha s(n-1) +
+\beta)/(\gamma s(n-1) + \delta)$ is the projectivization of the
+linear iteration $(p_n; q_n) = M (p_{n-1}; q_{n-1})$ for
+$M = \begin{pmatrix} \alpha & \beta \\ \gamma & \delta
+\end{pmatrix}$: whenever $q_n \ne 0$ throughout, induction gives
+$s(n) = p_n/q_n$. Closed forms for the matrix powers therefore
+give closed forms for $s(n)$. The two matrices of
+Section~\ref{sec:mobius} share the eigenvector matrix
+$\begin{pmatrix} 1 & 1 \\ 1 & -1 \end{pmatrix}$ and have
+eigenvalues $(3, 1)$ and $(3, -1)$, which is why all four
+sequences there are built from $3^n$ (and $(-1)^n$).
+
+\section{Results}
+\label{sec:results}
+
+\subsection{A115770 $\subseteq$ A391740}
+\label{sec:a115770}
+% Source folder: a115770-subset-a391740
+The OEIS cross-reference recorded the inclusion of
+$\mathrm{A115770} = \{k : 7k = \clmul(11,k)\}$ in
+$\mathrm{A391740} = \{0\} \cup \{k : \clmul(m,k) = 5k \text{ for some }
+m > 0\}$ only ``by conjecture''.
+
+\begin{theorem}
+% a115770-subset-a391740/README.md, Statement
+For all $k$, $7k = \clmul(11,k)$ implies $5k = \clmul(13,k)$. Hence
+$\mathrm{A115770} \subseteq \mathrm{A391740}$, with uniform witness
+$m = 13$ (and $0 \in \mathrm{A391740}$ by definition).
+\end{theorem}
+
+\emph{Proof.} State-pair induction on the $10$ reachable state
+pairs $(c_7, m_{11}, c_5, m_{13})$: six are live (four of them
+accepting, with $c = m$ on both sides) and four are dead by parity
+mismatch. In every reachable state, $c_7 = m_{11}$ implies
+$c_5 = m_{13}$, which closes the induction.
+% a115770-subset-a391740/README.md, Proof (state table S_0..S_9)
+Independent check: brute force for $k < 2^{20}$ ($1{,}999$ terms of
+A115770, $0$ counterexamples).
+% a115770-subset-a391740/README.md, Files
+\emph{Priority note.} The stronger equivalence $7k = C(11,k) \iff 5k = C(13,k)$ was previously proved and formalized in Lean by \texttt{trureturing}~\cite{trureturing2026}, making the inclusion $\text{A115770} \subseteq \text{A391740}$ an immediate corollary. The contribution here is a self-contained, direct 10-state reproof of the inclusion and its standalone Lean~4 formalization.
+% a115770-subset-a391740/README.md, Attribution
+
+\subsection{A115801 $\subseteq$ A391850}
+\label{sec:a115801}
+% Source folder: a115801-subset-a391850
+Let $\mathrm{A115801} = \{k : 9k = \clmul(25,k)\}$ and
+$\mathrm{A391850} = \{0\} \cup \{k > 0 : \clmul(m,k) = 15k \text{ for
+some } m > 0\}$.
+
+\begin{theorem}
+% a115801-subset-a391850/README.md, Statement and Proof
+For all $k$, $9k = \clmul(25,k) \iff 15k = \clmul(19,k)$. Hence
+$\mathrm{A115801} \subseteq \mathrm{A391850}$, with uniform witness
+$m = 19$ for $k > 0$.
+\end{theorem}
+
+\emph{Proof.} The equation $(9,25)$ has $24$ reachable states
+($8$ live, $16$ dead); the equation $(15,19)$ has $14$ ($8$ live,
+$6$ dead, all immediate parity dead-ends). The 8 coupled live pairs have matching acceptance ($c = m$) and transitions that either stay inside the live pairs or fall simultaneously into dead states on both sides, proving the equivalence by state-pair induction (Appendix~\ref{app:automata}).
+% a115801-subset-a391850/README.md, Proof
+Independent check: brute-force set equality for $k < 2^{20}$ ($650$
+terms). The equivalence had previously been conjectured without proof on the OEIS entry~\cite{oeisA115801} and asserted without proof in an unrefereed note~\cite{A115801Note}; this is the first proof known to us.
+% a115801-subset-a391850/README.md, Files and Attribution
+
+\subsection{A115807 $\subsetneq$ A048719}
+\label{sec:a115807}
+% Source folder: a115807-subset-a048719
+The OEIS entry for $\mathrm{A115807} = \{k : 15k = \clmul(27,k)\}$
+recorded the inclusion in $\mathrm{A048719} = \{k : 3k = \clmul(7,k)
+\text{ and } 5k = \clmul(5,k)\}$ only as a cross-reference question
+(``Subset of A048719?'').
+
+\begin{theorem}
+% a115807-subset-a048719/README.md, Statement and Proof
+For all $k$, $15k = \clmul(27,k)$ implies $3k = \clmul(7,k)$ and
+$5k = \clmul(5,k)$. The inclusion is strict, with witness $99$:
+$3 \cdot 99 = \clmul(7,99) = 297$ and $5 \cdot 99 = \clmul(5,99) =
+495$, but $15 \cdot 99 = 1485 \ne 1421 = \clmul(27,99)$.
+\end{theorem}
+
+\emph{Proof.} On the product automaton $((c_{15}, m_{27}), (c_3, m_7), (c_5, m_5))$, $14$ states are reachable under $(15,27)$ bit-matching: $7$ live and $7$ dead (Appendix~\ref{app:automata}). Six dead states fail by parity ($c_{15} \not\equiv m_{27} \pmod{2}$); the seventh, $((4,6),(0,1),(1,1))$, fails at $k = 0$ and steps only into parity-dead states. On every live state the conclusion pairs bit-match for both bits of $k$, and the terminal implication $c_{15} = m_{27} \Rightarrow (c_3 = m_7 \wedge c_5 = m_5)$ holds; strong induction on $k$ concludes. Independent check: brute force for $k < 2^{20}$ ($401$
+terms, $0$ violations).
+% a115807-subset-a048719/README.md, Proof and Files
+
+\subsection{A115876 $\subsetneq$ A115874}
+\label{sec:a115876}
+% Source folder: a115876-subset-a115874
+The OEIS entries recorded the inclusion of
+$\mathrm{A115876} = \{k : 41k = \clmul(105,k)\}$ in
+$\mathrm{A115874} = \{k : 19k = \clmul(55,k)\}$ only as cross-reference
+questions (``Subset of A115874?'' / ``Superset of A115876?'').
+
+\begin{theorem}
+% a115876-subset-a115874/README.md, Statement and Proof
+For all $k$, $41k = \clmul(105,k)$ implies $19k = \clmul(55,k)$. The
+inclusion is strict, with witness $31$: $19 \cdot 31 =
+\clmul(55,31) = 589$, but $41 \cdot 31 = 1271 \ne 1223 =
+\clmul(105,31)$.
+\end{theorem}
+
+\emph{Proof.} The automaton for $(41,105)$ has $40$
+parity-consistent reachable states: $9$ live and $31$ dead. Every dead
+state has $c \ne m$ and steps, on both input bits, only into dead
+states or parity mismatch, so no dead state satisfies its equation
+for any $k$. The $9$ live states couple uniquely to states of the
+$(19,55)$ automaton, forming a single cycle, and the terminal
+implication $c_1 = m_1 \Rightarrow c_2 = m_2$ holds on all $9$ pairs.
+Independent check: brute force for $k < 2^{20}$ ($64$ terms, $0$
+violations).
+% a115876-subset-a115874/README.md, Proof and Files
+
+\subsection{A115805 $\subsetneq$ A115823}
+\label{sec:a115805}
+% Source folder: a115805-subset-a115823
+The OEIS entries recorded the containment of
+$\mathrm{A115805} = \{k : 13k = \clmul(29,k)\}$ in
+$\mathrm{A115823} = \{k : (8k) \mathbin{\mathrm{XOR}} (13k) = 21k\}$
+only ``by conjecture'' / ``seems to be a superset''. Since
+$8k + 13k = 21k$, the conclusion is equivalent to
+$(8k) \mathbin{\mathrm{AND}} (13k) = 0$.
+
+\begin{theorem}
+% a115805-subset-a115823/README.md, Statement and Proof
+For all $k$, $13k = \clmul(29,k)$ implies
+$(8k) \mathbin{\mathrm{AND}} (13k) = 0$. The inclusion is strict, with
+witness $5$: $(8 \cdot 5) \mathbin{\mathrm{XOR}} (13 \cdot 5) = 105 =
+21 \cdot 5$, but $13 \cdot 5 = 65 \ne 105 = \clmul(29,5)$.
+\end{theorem}
+
+\emph{Proof.} Run the hypothesis $13k + c = C(29,k) \mathbin{\mathrm{XOR}} m$ as a state-pair induction, tracking also the carry $c_8$ of the $8k$ side. Of the $19$ reachable states, $13$ are dead (the equation is unsatisfiable from them for every $k$, by parity and one-step arguments) and $6$ are trim states $(c, m, c_8) \in \{(0,0,0), (6,14,4), (9,9,6), (4,4,3), (2,2,1), (1,1,0)\}$ (Appendix~\ref{app:automata}), on which $(8k + c_8) \mathbin{\mathrm{AND}} (13k + c) = 0$ is proved by strong induction: the lowest bits never conflict, and every step stays inside the trim states or falls into a dead state.
+The no-conflict property is not a purely local consequence of the
+hypothesis at a single bit position; the one-step lookahead embodied
+in the trim/dead distinction is essential. An independent
+bitwise-automaton verification finds $19$ reachable states, $6$ of
+them viable, and all $4$ reachable bit-collision transitions leading
+to non-viable states. Brute force for $k < 2^{20}$: $196$ terms, $0$
+violations.
+% a115805-subset-a115823/README.md, Proof and Files
+
+\subsection{A048719 $\subsetneq$ A115767, and
+A115768 $=$ A115767 $\setminus$ A048719}
+\label{sec:a048719}
+% Source folder: a048719-a115767-a115768
+Let $\mathrm{A115767} = \{k : (2k) \mathbin{\mathrm{XOR}} (5k) = 3k\}$
+and let A115768 be the subsequence of A115767 defined by
+$(4k) \mathbin{\mathrm{XOR}} k \ne 5k$. The OEIS entry for A115767
+recorded A048719 as a superset and the terms of A115768 as the ``(?)''
+terms of A115767 not in A048719.
+
+\begin{theorem}
+% a048719-a115767-a115768/README.md, Statement and Proof
+$\mathrm{A048719} \subsetneq \mathrm{A115767}$ (smallest witness $11$),
+and $\mathrm{A115768} = \mathrm{A115767} \setminus \mathrm{A048719}$
+exactly.
+\end{theorem}
+
+\emph{Proof.} One algebraic identity does everything:
+carryless multiplication distributes over XOR in the left argument,
+and $7 = 2 \mathbin{\mathrm{XOR}} 5$ as polynomials, so
+$\clmul(7,k) = (2k) \mathbin{\mathrm{XOR}} \clmul(5,k)$, while
+$\clmul(5,k) = (4k) \mathbin{\mathrm{XOR}} k$. The inclusion follows by
+substitution; for $k \in \mathrm{A115767}$,
+$k \in \mathrm{A048719} \iff (4k) \mathbin{\mathrm{XOR}} k = 5k$,
+which identifies the difference exactly. Witness $11$:
+$(2 \cdot 11) \mathbin{\mathrm{XOR}} (5 \cdot 11) = 22
+\mathbin{\mathrm{XOR}} 55 = 33 = 3 \cdot 11$, but $\clmul(7,11) = 49
+\ne 33$. Brute force for $k < 2^{20}$: $|\mathrm{A048719}| = 657$,
+$|\mathrm{A115767}| = 3553$, $|\mathrm{A115768}| = 2896$, with exact
+difference equality.
+% a048719-a115767-a115768/README.md, Proof and Files
+
+\subsection{A048715: Detlefs's characterization is true}
+\label{sec:a048715}
+% Source folder: a048715-detlefs-characterization
+Detlefs (Jun 08 2024, in the OEIS entry) wrote that
+$\mathrm{A048715} = \{x : 7x = \clmul(7,x)\}$ ``appears to be'' the set
+of $x$ with $(x \mathbin{\mathrm{AND}} 5x) = x$ and $(x
+\mathbin{\mathrm{OR}} 3x)/x = 3$.
+
+\begin{theorem}
+% a048715-detlefs-characterization/README.md, Statement
+For all $x \ge 1$, $7x = \clmul(7,x)$ if and only if
+$(x \mathbin{\mathrm{AND}} 5x) = x$ and $(x \mathbin{\mathrm{OR}}
+3x)/x = 3$ (exact division). The element $x = 0$ lies in A048715 but
+is excluded from Detlefs's condition by the division by $x$.
+\end{theorem}
+
+\emph{Proof.} Both sides equal the \emph{bit-triple
+condition} ``no two $1$-bits of $x$ at distance $1$ or $2$'', i.e.\
+$(x \mathbin{\mathrm{AND}} 2x) = 0$ and
+$(x \mathbin{\mathrm{AND}} 4x) = 0$. Indeed, $C(7,x) = x \mathbin{\mathrm{XOR}} 2x \mathbin{\mathrm{XOR}} 4x$ and the identity $a + b = (a \mathbin{\mathrm{XOR}} b) + 2(a \mathbin{\mathrm{AND}} b)$ show that $7x = x + 2x + 4x$ equals $C(7,x)$ if and only if $x$, $2x$, and $4x$ are pairwise bit-disjoint, i.e.\ $(x \mathbin{\mathrm{AND}} 2x) = (x \mathbin{\mathrm{AND}} 4x) = (2x \mathbin{\mathrm{AND}} 4x) = 0$; the third condition is redundant since $(2x \mathbin{\mathrm{AND}} 4x) = 2(x \mathbin{\mathrm{AND}} 2x)$.
+
+On Detlefs's side, we use the elementary lemma $a \mathbin{\mathrm{AND}} (a+b) = a \iff a \mathbin{\mathrm{AND}} b = 0$: if $a \mathbin{\mathrm{AND}} b = 0$, no carries occur in $a+b$, so $a+b = a \mathbin{\mathrm{OR}} b$ and $a \mathbin{\mathrm{AND}} (a+b) = a$; conversely, if $a \mathbin{\mathrm{AND}} b \ne 0$, let $t$ be the least bit position where both $a$ and $b$ have bit~$1$---no carry enters position~$t$, so bit~$t$ of $a+b$ is $0$ while bit~$t$ of $a$ is $1$, whence $a \mathbin{\mathrm{AND}} (a+b) \ne a$. Now $(x \mathbin{\mathrm{OR}} 3x)/x = 3 \iff x \mathbin{\mathrm{OR}} 3x = 3x \iff x \mathbin{\mathrm{AND}} 3x = x$, which with $3x = x + 2x$ and the lemma gives $(x \mathbin{\mathrm{AND}} 2x) = 0$; likewise, $x \mathbin{\mathrm{AND}} 5x = x$ with $5x = x + 4x$ gives $(x \mathbin{\mathrm{AND}} 4x) = 0$. Independent verification by
+finite automata: agreement for $x < 2^{20}$ ($2{,}745$ terms, the only
+difference being $x = 0$), and product automata for the two AND/OR
+conditions ($12$ and $6$ states).
+% a048715-detlefs-characterization/README.md, Proof and Files
+
+\subsection{Elementary characterizations of prime sequences}
+\label{sec:elem-primes}
+
+Seven of Detlefs's claims on prime sequences follow by short elementary arguments using Lucas's theorem, Pisano periods modulo~6, Euler's criterion, the Chinese remainder theorem, quadratic reciprocity, and classical form criteria. We collect them in Table~\ref{tab:elem-primes} and prove all seven in Proposition~\ref{prop:elem-primes}.
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{lll}
+\hline
+OEIS & Detlefs's claim (year) & Method \\
+\hline
+A080148 & $\binom{\mathrm{prime}(k)}{3}$ odd $\iff \mathrm{prime}(k) \equiv 3 \pmod{4}$ (2011) & Lucas mod~2 \\
+A036234 & (1) $a(k)=\min\{i:\binom{k\,p_i}{p_i}\bmod p_i = k\}$; (2) $\binom{kq}{q}\bmod q = 0 \iff k$ prime (2013) & Lucas, Bertrand \\
+A033199, A084865 & $x^2+6y^2$ and $2x^2+3y^2$ primes via $p \bmod 6$ and $\mathrm{Fib}(p) \bmod 6$ (2014) & Pisano-24, Cox \\
+A191060 & $p^{5n} \bmod 11$ has period~2, $[1,10]$ $\iff (p \mid 11)=-1$ (2014) & Euler's criterion \\
+A045468 & $p \bmod 5 \in \{1,4\} \iff p^6 \equiv 1 \pmod{210}$ (2011) & CRT mod~210 \\
+A191059 & $(n \mid 6)=-1 \iff (n \bmod 6)(\mathrm{Fib}(n) \bmod 6) = 5$ (2014) & Pisano-24, Kronecker \\
+A019335 & (a) $(5^n \bmod k)$ has period $k-1 \iff k \in \text{A019335}$; (b) $p \equiv 2,3 \pmod{5}$ (2014) & Order, quad.\ rec. \\
+\hline
+\end{tabular}
+\caption{The seven elementary prime characterizations proved in Proposition~\ref{prop:elem-primes}.}
+\label{tab:elem-primes}
+\end{table}
+
+\begin{proposition}\label{prop:elem-primes}
+All seven claims in Table~\ref{tab:elem-primes} are true, specifically:
+\begin{enumerate}
+  \item \textbf{A080148.} For every prime $p$, $\binom{p}{3}$ is odd if and only if $p \equiv 3 \pmod{4}$.
+  \item \textbf{A036234.} With $a(n) = \pi(n) + 1$ and $p_i = \mathrm{prime}(i)$: (i) for all $k \ge 0$, $a(k) = \min\{i \ge 1 : \binom{k p_i}{p_i} \bmod p_i = k\}$; and (ii) for all $k \ge 2$ with $q = \mathrm{prime}(a(k)-1)$ the largest prime $\le k$, $\binom{kq}{q} \bmod q = 0$ if and only if $k$ is prime.
+  \item \textbf{A033199 and A084865.} A prime $p$ is of the form $x^2 + 6y^2$ (A033199) if and only if $p \bmod 6 = 1$ and $\mathrm{Fib}(p) \bmod 6 = 1$. For $p > 3$, $p$ is of the form $2x^2 + 3y^2$ (A084865) if and only if $(p \bmod 6)(\mathrm{Fib}(p) \bmod 6) = 25$; the primes $2$ and $3$ lie in A084865 and are the sole exceptions to the Fibonacci condition.
+  \item \textbf{A191060.} For every prime $p$, the sequence $(p^{5n} \bmod 11)_{n \ge 0}$ has minimal period~$2$, repeating $[1,10]$, if and only if $p$ is a quadratic nonresidue modulo~$11$ (equivalently under eventual-period or $1$-based-indexing readings).
+  \item \textbf{A045468.} For every prime $p$, $p \bmod 5 \in \{1,4\}$ if and only if $p^6 \equiv 1 \pmod{210}$.
+  \item \textbf{A191059.} For every $n \in \mathbb{Z}_{\ge 0}$ (in particular, every prime $p$), the Kronecker symbol $(n \mid 6) = (n \mid 2)(n \mid 3)$ equals $-1$ if and only if $(n \bmod 6)(\mathrm{Fib}(n) \bmod 6) = 5$.
+  \item \textbf{A019335.} (a) For every integer $k \ge 2$, $(5^n \bmod k)_{n \ge 0}$ has exact period $k-1$ (pure or eventual, $0$- or $1$-indexed) if and only if $k$ is a prime with primitive root~$5$; and (b) every such prime satisfies $p \equiv 2$ or $3 \pmod{5}$.
+\end{enumerate}
+\end{proposition}
+
+\begin{proof}
+\textbf{(1)} By Lucas's theorem modulo~$2$, $\binom{p}{3}$ is odd iff every $1$-bit of $3 = 11_2$ is a $1$-bit of $p$, i.e.\ iff $p \equiv 3 \pmod{4}$ (for $p=2$ both sides fail, as $\binom{2}{3} = 0$). Verified for all $9{,}592$ primes $\le 100{,}000$.
+
+\textbf{(2)} By Lucas's theorem, $\binom{kp}{p} \equiv k \pmod{p}$ for every prime $p$. For $k = 0$, $\binom{0}{p_i} \bmod p_i = 0$ for all $i \ge 1$, so the minimum is $1 = a(0)$. For $k \ge 1$, the least nonnegative residue of $k \bmod p_i$ equals $k$ iff $p_i > k$, so the minimum index is $\pi(k) + 1 = a(k)$. For (ii), $\binom{kq}{q} \bmod q = k \bmod q$, and $q \mid k$ with $q$ the largest prime $\le k$ forces $k = q$; otherwise $k \ge 2q$, and Bertrand's postulate supplies a prime strictly between $q$ and $2q \le k$, contradicting maximality. Verified for $k < 300$ in (i) and $2 \le k < 2000$ in (ii).
+
+\textbf{(3)} Since $\mathrm{Fib}(n) \bmod 6$ has Pisano period~$24$, it depends only on $n \bmod 24$: $\mathrm{Fib}(n) \equiv 1 \pmod{6}$ exactly for $n \bmod 24 \in \{1, 2, 7, 10, 17, 23\}$, and $\mathrm{Fib}(n) \equiv 5 \pmod{6}$ exactly for $n \bmod 24 \in \{5, 11, 13, 14, 19, 22\}$. Intersecting the first set with $p \equiv 1 \pmod{6}$ ($\{1,7,13,19\} \bmod 24$) yields $\{1,7\} \bmod 24$. For A084865, since both $p \bmod 6$ and $\mathrm{Fib}(p) \bmod 6$ lie in $\{0,1,2,3,4,5\}$, their product equals $25$ iff both factors equal~$5$; intersecting $\{5,11,17,23\} \bmod 24$ with $\{5,11,13,14,19,22\} \bmod 24$ yields $\{5,11\} \bmod 24$. By Cox's genus-theory criteria for discriminant $-24$~\cite[Ch.~1, \S\S 2--3]{Cox2013}, for $p > 3$ we have $p = x^2 + 6y^2 \iff p \equiv 1,7 \pmod{24}$ and $p = 2x^2 + 3y^2 \iff p \equiv 5,11 \pmod{24}$. For $p \in \{2,3\}$, both sides of A033199 fail, while $2 = 2\cdot 1^2 + 3\cdot 0^2$ and $3 = 2\cdot 0^2 + 3\cdot 1^2$ lie in A084865 with products $2$ and $6$ respectively. Verified for all $5{,}133$ primes $\le 50{,}000$.
+
+\textbf{(4)} Put $c = p^5 \bmod 11$; then $a_p(n) := p^{5n} \bmod 11$ satisfies $a_p(0) = 1$ and $a_p(n+1) \equiv c\,a_p(n) \pmod{11}$. By Euler's criterion, $c = 10$ iff $p \bmod 11 \in \{2,6,7,8,10\}$ (the quadratic nonresidues), giving $a_p(2k) = 1$ and $a_p(2k+1) = 10$ (minimal period~$2$). For quadratic residues $p \bmod 11 \in \{1,3,4,5,9\}$, $c = 1$ gives the constant sequence $(1,1,\dots)$; for $p = 11$, $c = 0$ gives $(1,0,0,\dots)$, which has eventual period~$1$. Verified for all primes $\le 50{,}000$.
+
+\textbf{(5)} By the Chinese remainder theorem across $210 = 2 \cdot 3 \cdot 5 \cdot 7$: for each $q \in \{2,3,7\}$, $\varphi(q) \mid 6$, so $n^6 \equiv 1 \pmod{q}$ if and only if $q \nmid n$; while $n^6 \equiv 1 \pmod{5}$ iff $n \bmod 5 \in \{1,4\}$. The prime divisors $2,3,5,7$ fail both sides ($2^6, 3^6, 5^6, 7^6 \equiv 64, 99, 85, 49 \pmod{210}$), and every prime $p > 7$ is coprime to $2,3,7$, reducing $p^6 \equiv 1 \pmod{210}$ to $p \bmod 5 \in \{1,4\}$ (indeed, $p^6 \bmod 210$ is $1$ or $169$). Verified for all primes $\le 50{,}000$.
+
+\textbf{(6)} Both $(n \mid 6) = (n \mid 2)(n \mid 3)$ and $(n \bmod 6)(\mathrm{Fib}(n) \bmod 6)$ depend only on $n \bmod 24$. Since $n \bmod 6 \in \{0,2,3,4\}$ never divides $5$ (and $\mathrm{Fib}(n) \bmod 6 \le 5$), non-unit residue classes modulo~$24$ cannot yield product~$5$ and have $(n \mid 6) = 0$. Checking the $8$ unit classes modulo~$24$: $(n \mid 6) = -1$ holds precisely for $n \bmod 24 \in \{13, 17, 19, 23\}$, which are also precisely the classes with product~$5$ ($1\cdot 5$ for $13,19$ and $5\cdot 1$ for $17,23$; the other four unit classes give products $1$ or $25$). Note that $(p \mid 6)$ is the Kronecker symbol, equal to $(-6 \mid p)$, not the Jacobi symbol $(6 \mid p)$ (which differs when $p \equiv 3 \pmod{4}$). Verified for all $n \le 5000$ and all primes $\le 50{,}000$.
+
+\textbf{(7)} If $\gcd(5,k) = 1$, $(5^n \bmod k)_{n \ge 0}$ is purely periodic with exact period $\mathrm{ord}_k(5) \mid \varphi(k) \le k-1$; period $k-1$ therefore forces $\mathrm{ord}_k(5) = \varphi(k) = k-1$, which holds iff $k$ is prime with primitive root~$5$. If $5 \mid k$, write $k = 5^e m$ with $e \ge 1$ and $\gcd(5,m) = 1$: the sequence is not purely periodic ($5^0 \equiv 1 \not\equiv 0 \equiv 5^T \pmod{5}$ for all $T \ge 1$), and by the Chinese remainder theorem has preperiod~$e$ and eventual period $\mathrm{ord}_m(5) \le \varphi(m) < k-1$. For (b), $p = 2$ trivially satisfies $2 \equiv 2 \pmod{5}$ and $p = 5$ is excluded by $\gcd(5,p) = 1$; for odd $p \ne 5$ with $p \equiv \pm 1 \pmod{5}$, quadratic reciprocity gives $(5 \mid p) = (p \mid 5) = +1$, so $\mathrm{ord}_p(5) \mid (p-1)/2 < p-1$. The condition in (b) is not sufficient ($\mathrm{ord}_{13}(5) = 4$, $\mathrm{ord}_{67}(5) = 22$). Verified for all $k < 3000$ ($181$ primes, $k=2$ included).
+\end{proof}
+
+\subsection{A067793: the claim is false, with a corrected
+characterization}
+\label{sec:a067793}
+% Source folder: a067793-detlefs-disproof
+Detlefs (Nov~16 2011, in the OEIS entry) claimed that $\text{A067793} = \{\text{nonprime } n \ge 1 : \varphi(n) > 2n/3\}$ equals the set of nonprime (in Detlefs's wording, ``composite'', though $n=1$ satisfies both $\varphi(1) = 1 > 2/3$ and $S(1) = 1 \equiv 0 \pmod{1}$) integers $n$ with $S(n) := \sum_{k=1}^{n} k^2 = n(n+1)(2n+1)/6 \equiv 0 \pmod{n}$.
+
+\begin{theorem}
+% a067793-detlefs-disproof/README.md, Statement, Disproof, and
+% Corrected characterizations
+The claimed equality is false: $n = 385 = 5 \cdot 7 \cdot 11$ has
+$S(385) = 19{,}096{,}385 = 385 \times 49{,}601$, so $S(385) \equiv 0
+\pmod{385}$, but $\varphi(385) = 240 < 770/3 = 2 \cdot 385/3$, so
+$385 \notin \mathrm{A067793}$. The inclusion
+$\mathrm{A067793} \subsetneq \{n : S(n) \equiv 0 \pmod n\}$ does hold.
+Moreover:
+\begin{enumerate}
+\item $S(n) \equiv 0 \pmod n \iff \gcd(n, 6) = 1$.
+\item $\varphi(n) > 2n/3 \iff \prod_{p \mid n} (1 - 1/p) > 2/3$, the
+product over distinct prime divisors.
+\end{enumerate}
+There is no bound on the number of distinct prime factors: prime
+powers and products of two distinct primes $\ge 5$ always qualify,
+three distinct primes qualify iff the product in (2) exceeds $2/3$
+(smallest example $715 = 5 \cdot 11 \cdot 13$, with
+$\varphi(715) = 480 > 1430/3$), and four or more can qualify with
+large primes (smallest example $17017 = 7 \cdot 11 \cdot 13
+\cdot 17$).
+\end{theorem}
+
+\emph{Proof.} Since $S(n)/n = (n+1)(2n+1)/6$, condition (1) is
+$6 \mid (n+1)(2n+1)$, which holds iff $n$ is odd and $3 \nmid n$.
+Item (2) is the multiplicativity of $\varphi$. In particular
+$\gcd(n,6) = 1$ is necessary for $\varphi(n) > 2n/3$ (a factor $2$ or
+$3$ already makes the product $\le 2/3$), giving the inclusion; it is
+proper exactly at the $n$ coprime to $6$ with product $\le 2/3$
+(smallest: $385$, then $455, 595, 665, 805, \dots$). Verified in exact
+arithmetic: for nonprime $n \le 200{,}000$ there are $799$ cases with
+$S$ true but $\varphi$ false and $0$ in reverse.
+% a067793-detlefs-disproof/README.md, Corrected characterizations and
+% Files
+
+\subsection{A014062: Detlefs's conjecture is false}
+\label{sec:a014062}
+% Source folder: a014062-detlefs-disproof
+Let $a(n) = \binom{n^2}{n}$ (A014062). Detlefs (Aug 06 2013, corrected
+by Marcus May 29 2015, in the OEIS entry) conjectured that
+$a(n) \equiv n \pmod{n^3}$ only if $n$ is $1$, an odd prime, the
+square of an odd prime, or the cube of an odd prime.
+
+\begin{theorem}\label{thm:A014062}
+The conjecture is false: $n = 16843^4 = 80478114820849201$ satisfies $a(n) \equiv n \pmod{n^3}$, yet $16843^4$ is none of $1$, a prime, a prime square, or a prime cube. More precisely, for every odd prime $p$,
+\[
+  a(p^4) \equiv p^4 \pmod{p^{12}}
+  \iff \sum_{m=1}^{(p-1)/2} \bigl(m(p-m)\bigr)^{-1} \equiv 0 \pmod{p^2}
+  \iff H_{p-1} := \sum_{m=1}^{p-1} m^{-1} \equiv 0 \pmod{p^3},
+\]
+i.e.\ if and only if $p$ is a Wolstenholme prime~\cite{McIntosh1995}. Since $16843$ is the smallest Wolstenholme prime, $16843^4$ is the smallest counterexample among prime fourth powers; minimality among all integers remains open.
+\end{theorem}
+
+\begin{proof}
+By absorption, $a(n) \equiv n \pmod{n^3} \iff \binom{n^2-1}{n-1} \equiv 1 \pmod{n^2}$. For $n = p^4$, since $p^4 - 1$ is even we have $\binom{p^8 - 1}{p^4 - 1} = \prod_{j=1}^{p^4 - 1} \bigl(1 - p^8/j\bigr)$ in $R = \mathbb{Z}/p^8\mathbb{Z}$. Writing each $j \in [1, p^4 - 1]$ uniquely as $j = p^{4-s} m$ with $1 \le s \le 4$ and $p \nmid m$ gives
+\[
+  \binom{p^8 - 1}{p^4 - 1} = \prod_{s=1}^{4} \prod_{\substack{1 \le m < p^s \\ p \nmid m}} \bigl(1 - p^{4+s} m^{-1}\bigr).
+\]
+Every cross term is divisible by $p^{4+s_1+4+s_2} \ge p^{10} \equiv 0 \pmod{p^8}$ (square-zero linearization), leaving $\binom{p^8 - 1}{p^4 - 1} \equiv 1 - \sum_{s=1}^{4} p^{4+s} S_s \pmod{p^8}$, where $S_s := \sum_{1 \le m < p^s,\, p \nmid m} m^{-1}$. Pairing $m$ with $p^s - m$ gives $m^{-1} + (p^s - m)^{-1} = p^s \bigl(m(p^s - m)\bigr)^{-1}$, so $p^{4+s} S_s \equiv 0 \pmod{p^{4+2s}}$, which vanishes modulo~$p^8$ for all $s \ge 2$. Only $s = 1$ survives:
+\[
+  \binom{p^8 - 1}{p^4 - 1} \equiv 1 - p^6 \sum_{m=1}^{(p-1)/2} \bigl(m(p-m)\bigr)^{-1} \pmod{p^8},
+\]
+yielding the stated criterion; the equivalence with $H_{p-1} \equiv 0 \pmod{p^3}$ and $\binom{2p-1}{p-1} \equiv 1 \pmod{p^4}$ is standard~\cite{McIntosh1995}. For $p = 16843$, direct modular computation confirms $\sum_{m=1}^{8421} (m(16843 - m))^{-1} \equiv 10083 \cdot 16843^2 \equiv 0 \pmod{16843^2}$, $H_{16842} \equiv 0 \pmod{16843^3}$, and $\binom{2p-1}{p-1} \equiv 1 \pmod{p^4}$. Scope: no odd prime below $16843$ is Wolstenholme (verified exhaustively); composite $n$ with at least two distinct prime factors are excluded up to $n \le 20{,}000$ (filtered search), and $n \le 2000$ is verified exhaustively ($319$ hits, the non-prime hits being exactly $1$, $p^2$, and $p^3$).
+\end{proof}
+% a014062-detlefs-disproof/README.md, Proof, Scope, and Files
+
+\subsection{M\"obius iterations: A003462, A007051, A168607,
+A152011}
+\label{sec:mobius}
+% Source folder: detlefs-mobius-iterations
+Detlefs (Nov 16 2010, in the OEIS entries) recorded four claims
+of the same shape: a first-order rational (M\"obius) iteration
+$s(n)$ has the closed form $s(n) = a(n)/(a(n) + c)$, where $a(n)$
+is the sequence in question:
+\begin{enumerate}
+\item[(i)] $\mathrm{A003462}$, $a(n) = (3^n - 1)/2$: $s(0) = 0$,
+  $s(n) = (2s(n-1)+1)/(s(n-1)+2)$; claim
+  $s(n) = a(n)/(a(n)+1)$ for $n \ge 0$.
+\item[(ii)] $\mathrm{A007051}$, $a(n) = (3^n + 1)/2$:
+  $s(1) = 2$, same recurrence; claim $s(n) = a(n)/(a(n)-1)$ for
+  $n \ge 1$.
+\item[(iii)] $\mathrm{A168607}$, $a(n) = 3^n + 2$: $s(1) = 5$,
+  same recurrence; claim $s(n) = a(n)/(a(n)-4)$ for $n > 1$.
+\item[(iv)] $\mathrm{A152011}$, $a(n) = (3^n - (-1)^n)/2$
+  ($n \ge 1$; $a(0) = 1$): $s(1) = 2$,
+  $s(n) = (s(n-1)+2)/(2s(n-1)+1)$; claim
+  $s(n) = a(n)/(a(n)+(-1)^n)$ for $n \ge 1$.
+\end{enumerate}
+
+\begin{theorem}
+% detlefs-mobius-iterations/README.md, Statement
+All four claims are true in their stated domains; claim (iii) in
+fact holds for all $n \ge 1$.
+\end{theorem}
+
+\emph{Proof.} The two recurrences are the M\"obius maps of
+$M_+ = \begin{pmatrix} 2 & 1 \\ 1 & 2 \end{pmatrix}$ (eigenvalues
+$3$, $1$) and $M_- = \begin{pmatrix} 1 & 2 \\ 2 & 1 \end{pmatrix}$
+(eigenvalues $3$, $-1$), whose powers have the closed forms
+$M_+^k = \frac{1}{2}\begin{pmatrix} 3^k + 1 & 3^k - 1 \\
+3^k - 1 & 3^k + 1 \end{pmatrix}$ and
+$M_-^k = \frac{1}{2}\begin{pmatrix} 3^k + (-1)^k &
+3^k - (-1)^k \\ 3^k - (-1)^k & 3^k + (-1)^k \end{pmatrix}$, each
+proved by induction on $k$. By the correspondence of Section~2.3, for item~(i) we apply $M_+^n$ to $(p_0; q_0) = (0; 1)$ for all $n \ge 0$, obtaining $(p_n; q_n) = \bigl((3^n - 1)/2;\, (3^n + 1)/2\bigr) = (a(n);\, a(n)+1)$; for items~(ii)--(iv) we apply $M_+^{n-1}$ (resp.\ $M_-^{n-1}$) to $(p_1; q_1)$ with $p_1/q_1 = s(1)$ for all $n \ge 1$, obtaining $(p_n; q_n) = (a(n);\, a(n) + c)$ with $q_n \ge 1 > 0$ at every step. Equivalently, each identity follows by a one-step induction from $a(n+1) = 3a(n) + d$ with $d = 1, -1, -4, 2(-1)^n$ respectively. Verified in exact rational
+arithmetic for $30$ terms of each identity ($0$ mismatches), with
+the closed forms checked against the OEIS term lists.
+% detlefs-mobius-iterations/README.md, Proof and Verification
+
+\section{Formalization in Lean 4}
+\label{sec:formalization}
+% Grounded in: the Files paragraphs of the folder READMEs cited per
+% row. All Lean files are self-contained, Lean 4.36.0, compiling with
+% no errors (and no warnings where the README states it).
+Seven of the seventeen results (Sections~3.1--3.7) are formally verified in Lean~4; the remaining ten (Sections~3.8--3.11) are supported by complete elementary proofs together with independent computational verification scripts. The axiom dependencies of the formalized theorems are:
+\begin{itemize}
+\item A115770 $\subseteq$ A391740: [\texttt{propext},
+  \texttt{Quot.sound}]. % a115770-subset-a391740/README.md
+\item A115801 $\subseteq$ A391850 (equivalence and inclusion):
+  [\texttt{propext}, \texttt{Quot.sound}].
+  % a115801-subset-a391850/README.md
+\item A115807 $\subsetneq$ A048719 (inclusion, witness, strictness):
+  [\texttt{propext}, \texttt{Quot.sound}].
+  % a115807-subset-a048719/README.md
+\item A115876 $\subsetneq$ A115874: inclusion [\texttt{propext},
+  \texttt{Classical.choice}, \texttt{Quot.sound}]; strictness witness
+  [\texttt{propext}]. % a115876-subset-a115874/README.md
+\item A115805 $\subsetneq$ A115823: inclusion [\texttt{propext},
+  \texttt{Classical.choice}, \texttt{Quot.sound}]; strictness witness
+  [\texttt{propext}, \texttt{Quot.sound}].
+  % a115805-subset-a115823/README.md
+\item A048719 $\subsetneq$ A115767 and the A115768 difference (all
+  theorems): [\texttt{propext}, \texttt{Quot.sound}].
+  % a048719-a115767-a115768/README.md
+\item A048715 characterization (main equivalence): [\texttt{propext},
+  \texttt{Classical.choice}, \texttt{Quot.sound}].
+  % a048715-detlefs-characterization/README.md
+\end{itemize}
+All artifacts (Lean files and verification scripts) are in the public
+repository \url{https://github.com/soux369/math}, one folder per
+result. An archived copy is available under the DOI
+\url{https://doi.org/10.5281/zenodo.24591537}.
+
+\section{Related work and priority notes}
+\label{sec:related}
+Two further Detlefs-type claims were resolved independently on the same day (2026-11-27) and are not claimed among the seventeen results of this paper: the inclusion $\text{A115774} \subseteq \text{A115772}$ and the refutation of Detlefs's proposed equality $\text{A115772} = \{x \mathbin{\mathrm{OR}} 4x\}$ (smallest counterexample $325 = 65 \mathbin{\mathrm{OR}} (4 \cdot 65)$) were published first by Blake Stone (with OpenAI Codex)~\cite{Stone2026}, who has priority for both; the bound question for A115861 was settled by \texttt{derekblair}~\cite{Derekblair2026}. Independent derivations of the two Stone results, with Lean~4 formalizations, are archived in our repository~\cite{Moto2026} for the record. The equivalence underlying Section~3.1 was previously proved in Lean by \texttt{trureturing}~\cite{trureturing2026} (see the priority note in Section~3.1). For each of the remaining sixteen results in Section~3, the accompanying folder records that no earlier proof was found as of 2026-11-27.
+
+\appendix
+\section{Finite-State Certificates for Theorems~3.1--3.5}
+\label{app:automata}
+
+This appendix provides the complete finite-state certificates for the five automaton proofs in Sections~3.1--3.5. Throughout, we use the standardized carry/mask notation $(c, m)$ of Section~2.1: for an equation $ak = C(b,k)$ with odd $a, b$, a state $(c, m)$ represents the shifted equation $ak + c = C(b,k) \oplus m$, bit-matching on input $x \in \{0,1\}$ holds iff $c \equiv m \pmod{2}$, and the update rule is
+\[
+  c' = \lfloor (c + ax)/2 \rfloor, \qquad m' = \lfloor (m \oplus bx)/2 \rfloor.
+\]
+A state is \emph{accepting} (marked with $^*$) if $c = m$, \emph{live} if its shifted equation is satisfiable for some $k \ge 0$, and \emph{dead} if it is unsatisfiable for every $k \ge 0$. All reachable sets and transition tables below were extracted from the Lean~4 formalizations and independently reproduced by breadth-first search from the uniform transition rule.
+
+\subsection{Theorem~3.1: A115770 $\subseteq$ A391740}
+\label{app:thm31}
+
+\paragraph{State definition.}
+Hypothesis $7k = C(11,k)$; conclusion $5k = C(13,k)$ (uniform witness $m = 13$). States are coupled $4$-tuples $(c_7, m_{11}, c_5, m_{13})$ with initial state $s_0 = (0,0,0,0)$.
+
+\paragraph{Reachable states ($10$ total: $6$ live, $4$ dead).}
+\begin{itemize}
+  \item \emph{Live ($6$; $4$ accepting):}
+  $s_0 = (0,0,0,0)^*$, $s_1 = (3,5,2,6)$, $s_3 = (5,7,3,5)$, $s_5 = (6,6,4,4)^*$, $s_6 = (3,3,2,2)^*$, $s_7 = (1,1,1,1)^*$.
+  \item \emph{Dead ($4$; all parity-mismatched with $c_7 \not\equiv m_{11} \pmod{2}$):}
+  $s_2 = (1,2,1,3)$, $s_4 = (2,3,1,2)$, $s_8 = (5,4,3,7)$, $s_9 = (4,5,3,6)$.
+\end{itemize}
+
+\paragraph{Transition table and verification.}
+Table~\ref{tab:app-31} gives the transitions on all live states. On every live state $c_5 \equiv m_{13} \pmod{2}$ holds, and on all $10$ reachable states the terminal implication $c_7 = m_{11} \Rightarrow c_5 = m_{13}$ holds.
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{lll}
+\hline
+State & Bit $0$ & Bit $1$ \\
+\hline
+$s_0 = (0,0,0,0)^*$ & $s_0$ & $s_1$ \\
+$s_1 = (3,5,2,6)$ & $s_2$ (dead) & $s_3$ \\
+$s_3 = (5,7,3,5)$ & $s_4$ (dead) & $s_5$ \\
+$s_5 = (6,6,4,4)^*$ & $s_6$ & $s_5$ \\
+$s_6 = (3,3,2,2)^*$ & $s_7$ & $s_8$ (dead) \\
+$s_7 = (1,1,1,1)^*$ & $s_0$ & $s_9$ (dead) \\
+\hline
+\end{tabular}
+\caption{Live-state transitions for Theorem~3.1 (A115770 $\subseteq$ A391740).}
+\label{tab:app-31}
+\end{table}
+
+\subsection{Theorem~3.2: A115801 $\subseteq$ A391850}
+\label{app:thm32}
+
+\paragraph{State definition.}
+Equivalence $9k = C(25,k) \iff 15k = C(19,k)$ (uniform witness $m = 19$). Per-side states are pairs $(c, m)$, coupled as $((c_9, m_{25}), (c_{15}, m_{19}))$ with initial state $((0,0),(0,0))$.
+
+\paragraph{Reachable states.}
+\begin{itemize}
+  \item \emph{Side $(9,25)$ ($24$ reachable: $8$ live, $16$ dead):}
+  Live ($8$; $5$ accepting): $(0,0)^*$, $(1,1)^*$, $(2,2)^*$, $(4,4)^*$, $(8,8)^*$, $(4,12)$, $(6,10)$, $(7,9)$.
+  Dead ($16$): $(0,1)$, $(1,2)$, $(1,3)$, $(2,6)$, $(2,7)$, $(3,4)$, $(3,5)$, $(3,7)$, $(5,12)$, $(5,13)$, $(5,15)$, $(6,14)$, $(6,15)$, $(7,10)$, $(7,11)$, $(8,9)$.
+  \item \emph{Side $(15,19)$ ($14$ reachable: $8$ live, $6$ dead):}
+  Live ($8$; $5$ accepting): $(0,0)^*$, $(1,1)^*$, $(3,3)^*$, $(7,7)^*$, $(14,14)^*$, $(7,9)$, $(11,13)$, $(13,15)$.
+  Dead ($6$; all immediate parity dead-ends $c \not\equiv m \pmod{2}$): $(3,4)$, $(5,6)$, $(6,7)$, $(8,9)$, $(9,8)$, $(11,10)$.
+\end{itemize}
+
+\paragraph{Coupled live pairs and transition table.}
+Table~\ref{tab:app-32} lists the $8$ coupled live pairs and their transitions. Acceptance matches on every pair ($c_9 = m_{25} \iff c_{15} = m_{19}$), and every transition from a live pair lands either in another live pair or simultaneously in $\mathrm{Dead}_9 \times \mathrm{Dead}_{15}$ (never mixed), establishing the equivalence.
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{lll}
+\hline
+Coupled live pair & Bit $0$ & Bit $1$ \\
+\hline
+$((0,0),(0,0))^*$ & $((0,0),(0,0))$ & $((4,12),(7,9))$ \\
+$((4,12),(7,9))$ & $((2,6),(3,4))$ (dead$\times$dead) & $((6,10),(11,13))$ \\
+$((6,10),(11,13))$ & $((3,5),(5,6))$ (dead$\times$dead) & $((7,9),(13,15))$ \\
+$((7,9),(13,15))$ & $((3,4),(6,7))$ (dead$\times$dead) & $((8,8),(14,14))$ \\
+$((8,8),(14,14))^*$ & $((4,4),(7,7))$ & $((8,8),(14,14))$ \\
+$((4,4),(7,7))^*$ & $((2,2),(3,3))$ & $((6,14),(11,10))$ (dead$\times$dead) \\
+$((2,2),(3,3))^*$ & $((1,1),(1,1))$ & $((5,13),(9,8))$ (dead$\times$dead) \\
+$((1,1),(1,1))^*$ & $((0,0),(0,0))$ & $((5,12),(8,9))$ (dead$\times$dead) \\
+\hline
+\end{tabular}
+\caption{Coupled live-pair transitions for Theorem~3.2 (A115801 $\subseteq$ A391850).}
+\label{tab:app-32}
+\end{table}
+
+\paragraph{Dead-state transitions.}
+Tables~\ref{tab:app-32d9} and~\ref{tab:app-32d15} list the transitions of every dead state on each side. A dash means the state is parity-mismatched ($c \not\equiv m \pmod{2}$), so no input bit matches and the run dies at once. Every remaining successor of a dead state is again dead, so no accepting run passes through a dead state on either side, completing the certificate for the equivalence.
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{lll}
+\hline
+Dead state $(c_9, m_{25})$ & Bit $0$ & Bit $1$ \\
+\hline
+$(0,1)$ & --- & --- \\
+$(1,2)$ & --- & --- \\
+$(1,3)$ & $(0,1)$ (dead) & $(5,13)$ (dead) \\
+$(2,6)$ & $(1,3)$ (dead) & $(5,15)$ (dead) \\
+$(2,7)$ & --- & --- \\
+$(3,4)$ & --- & --- \\
+$(3,5)$ & $(1,2)$ (dead) & $(6,14)$ (dead) \\
+$(3,7)$ & $(1,3)$ (dead) & $(6,15)$ (dead) \\
+$(5,12)$ & --- & --- \\
+$(5,13)$ & $(2,6)$ (dead) & $(7,10)$ (dead) \\
+$(5,15)$ & $(2,7)$ (dead) & $(7,11)$ (dead) \\
+$(6,14)$ & $(3,7)$ (dead) & $(7,11)$ (dead) \\
+$(6,15)$ & --- & --- \\
+$(7,10)$ & --- & --- \\
+$(7,11)$ & $(3,5)$ (dead) & $(8,9)$ (dead) \\
+$(8,9)$ & --- & --- \\
+\hline
+\end{tabular}
+\caption{Transitions of the $16$ dead states of side $(9,25)$ for Theorem~3.2.}
+\label{tab:app-32d9}
+\end{table}
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{lll}
+\hline
+Dead state $(c_{15}, m_{19})$ & Bit $0$ & Bit $1$ \\
+\hline
+$(3,4)$ & --- & --- \\
+$(5,6)$ & --- & --- \\
+$(6,7)$ & --- & --- \\
+$(8,9)$ & --- & --- \\
+$(9,8)$ & --- & --- \\
+$(11,10)$ & --- & --- \\
+\hline
+\end{tabular}
+\caption{Transitions of the $6$ dead states of side $(15,19)$ for Theorem~3.2; all six are parity-mismatched, hence immediate dead ends.}
+\label{tab:app-32d15}
+\end{table}
+
+\subsection{Theorem~3.3: A115807 $\subsetneq$ A048719}
+\label{app:thm33}
+
+\paragraph{State definition.}
+Hypothesis $15k = C(27,k)$; conclusions $3k = C(7,k)$ and $5k = C(5,k)$. States are product $6$-tuples $((c_{15}, m_{27}), (c_3, m_7), (c_5, m_5))$, written $(c_{15}, m_{27} \mid c_3, m_7 \mid c_5, m_5)$, with initial state $S_0 = (0,0 \mid 0,0 \mid 0,0)$.
+
+\paragraph{Reachable states ($14$ total: $7$ live, $7$ dead).}
+\begin{itemize}
+  \item \emph{Live ($7$; $5$ accepting, where $c_{15} = m_{27}$, $c_3 = m_7$, and $c_5 = m_5$ all hold):}
+  $S_0 = (0,0 \mid 0,0 \mid 0,0)^*$, $S_1 = (7,13 \mid 1,3 \mid 2,2)$, $S_3 = (11,11 \mid 2,2 \mid 3,3)^*$, $S_4 = (5,5 \mid 1,1 \mid 1,1)^*$, $S_6 = (2,2 \mid 0,0 \mid 0,0)^*$, $S_8 = (1,1 \mid 0,0 \mid 0,0)^*$, $S_9 = (8,12 \mid 1,3 \mid 2,2)$.
+  \item \emph{Dead ($7$):}
+  Six parity-dead states ($c_{15} \not\equiv m_{27} \pmod{2}$): $S_2 = (3,6 \mid 0,1 \mid 1,1)$, $S_5 = (13,8 \mid 2,2 \mid 4,3)$, $S_7 = (10,15 \mid 2,3 \mid 3,2)$, $S_{10} = (8,13 \mid 1,3 \mid 2,2)$, $S_{12} = (2,3 \mid 0,0 \mid 0,0)$, $S_{13} = (9,14 \mid 1,3 \mid 3,2)$; and one one-step dead state $S_{11} = (4,6 \mid 0,1 \mid 1,1)$ (fails at $k = 0$ since $4 \ne 6$, and steps only to $S_{12}$ and $S_{13}$).
+\end{itemize}
+
+\paragraph{Transition table and verification.}
+Table~\ref{tab:app-33} lists the transitions on all live states and on $S_{11}$. On every live state both conclusion pairs bit-match ($c_3 \equiv m_7 \pmod{2}$ and $c_5 \equiv m_5 \pmod{2}$), and $c_{15} = m_{27} \Rightarrow (c_3 = m_7 \wedge c_5 = m_5)$ holds.
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{lll}
+\hline
+State & Bit $0$ & Bit $1$ \\
+\hline
+$S_0 = (0,0 \mid 0,0 \mid 0,0)^*$ & $S_0$ & $S_1$ \\
+$S_1 = (7,13 \mid 1,3 \mid 2,2)$ & $S_2$ (dead) & $S_3$ \\
+$S_3 = (11,11 \mid 2,2 \mid 3,3)^*$ & $S_4$ & $S_5$ (dead) \\
+$S_4 = (5,5 \mid 1,1 \mid 1,1)^*$ & $S_6$ & $S_7$ (dead) \\
+$S_6 = (2,2 \mid 0,0 \mid 0,0)^*$ & $S_8$ & $S_9$ \\
+$S_8 = (1,1 \mid 0,0 \mid 0,0)^*$ & $S_0$ & $S_{10}$ (dead) \\
+$S_9 = (8,12 \mid 1,3 \mid 2,2)$ & $S_{11}$ (dead) & $S_3$ \\
+$S_{11} = (4,6 \mid 0,1 \mid 1,1)$ (dead) & $S_{12}$ (dead) & $S_{13}$ (dead) \\
+\hline
+\end{tabular}
+\caption{State transitions for Theorem~3.3 (A115807 $\subsetneq$ A048719).}
+\label{tab:app-33}
+\end{table}
+
+\subsection{Theorem~3.4: A115876 $\subsetneq$ A115874}
+\label{app:thm34}
+
+\paragraph{State definition.}
+Hypothesis $41k = C(105,k)$; conclusion $19k = C(55,k)$. Per-side states are parity-consistent pairs $(c, m)$ (keeping only successors with $c \equiv m \pmod{2}$; parity-mismatched successors are terminal failures). Coupled live states are pairs $((c_{41}, m_{105}), (c_{19}, m_{55}))$ starting from $((0,0),(0,0))$.
+
+\paragraph{Reachable parity-consistent states.}
+\begin{itemize}
+  \item \emph{Hypothesis side $(41,105)$ ($40$ reachable: $9$ live, $31$ dead):}
+  Live ($9$; $7$ accepting): $(0,0)^*$, $(1,1)^*$, $(2,2)^*$, $(4,4)^*$, $(8,8)^*$, $(17,17)^*$, $(35,35)^*$, $(20,52)$, $(30,46)$.
+  Dead ($31$; all satisfy $c \ne m$ and step on both bits only into this dead set or parity mismatch):
+  $(1,3)$, $(2,6)$, $(3,5)$, $(3,7)$, $(5,13)$, $(6,12)$, $(6,14)$, $(7,11)$, $(8,10)$, $(10,26)$, $(11,25)$, $(11,27)$, $(12,24)$, $(12,28)$, $(13,29)$, $(15,23)$, $(16,20)$, $(16,22)$, $(21,53)$, $(21,55)$, $(22,54)$, $(23,51)$, $(24,48)$, $(25,57)$, $(26,56)$, $(26,58)$, $(28,62)$, $(31,47)$, $(32,44)$, $(33,41)$, $(36,34)$.
+  \item \emph{Conclusion side $(19,55)$ ($24$ reachable: $18$ live, $6$ dead):}
+  Live ($18$; $9$ accepting): $(0,0)^*$, $(1,1)^*$, $(1,3)$, $(2,2)^*$, $(2,6)$, $(4,4)^*$, $(5,13)$, $(8,8)^*$, $(9,9)^*$, $(9,27)$, $(10,26)$, $(13,31)$, $(14,22)$, $(16,16)^*$, $(16,20)$, $(17,17)^*$, $(17,19)$, $(18,18)^*$.
+  Dead ($6$): $(3,5)$, $(7,11)$, $(8,10)$, $(10,24)$, $(11,25)$, $(15,23)$.
+\end{itemize}
+All $8$ conclusion-side states appearing in the coupled pairs below lie in the live set of $(19,55)$.
+
+\paragraph{Coupled live pairs and transition table.}
+Table~\ref{tab:app-34} lists the $9$ coupled live pairs and their transitions. On every pair, $c_{41} = m_{105} \Rightarrow c_{19} = m_{55}$ holds, and every branch either stays in the $9$ coupled live pairs or sends the hypothesis side into a dead state or parity mismatch.
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{lll}
+\hline
+Coupled live pair & Bit $0$ & Bit $1$ \\
+\hline
+$((0,0),(0,0))^*$ & $((0,0),(0,0))$ & $((20,52),(9,27))$ \\
+$((1,1),(0,0))^*$ & $((0,0),(0,0))$ & side-1 parity mismatch $(21,52)$ \\
+$((2,2),(1,1))^*$ & $((1,1),(0,0))$ & side-1 dead $(21,53)$ \\
+$((4,4),(2,2))^*$ & $((2,2),(1,1))$ & side-1 dead $(22,54)$ \\
+$((8,8),(4,4))^*$ & $((4,4),(2,2))$ & side-1 dead $(24,48)$ \\
+$((17,17),(8,8))^*$ & $((8,8),(4,4))$ & side-1 parity mismatch $(29,60)$ \\
+$((20,52),(9,27))$ & side-1 dead $(10,26)$ & $((30,46),(14,22))$ \\
+$((30,46),(14,22))$ & side-1 dead $(15,23)$ & $((35,35),(16,16))$ \\
+$((35,35),(16,16))^*$ & $((17,17),(8,8))$ & side-1 parity mismatch $(38,37)$ \\
+\hline
+\end{tabular}
+\caption{Coupled live-pair transitions for Theorem~3.4 (A115876 $\subsetneq$ A115874).}
+\label{tab:app-34}
+\end{table}
+
+\paragraph{Dead-state transitions.}
+Tables~\ref{tab:app-34d41} and~\ref{tab:app-34d19} list the transitions of every dead state on each side. Every successor of a dead state is again dead or parity-mismatched (a terminal failure, not a state), so no accepting run passes through a dead state on either side.
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{lll}
+\hline
+Dead state $(c_{41}, m_{105})$ & Bit $0$ & Bit $1$ \\
+\hline
+$(1,3)$ & parity mismatch $(0,1)$ & $(21,53)$ (dead) \\
+$(2,6)$ & $(1,3)$ (dead) & $(21,55)$ (dead) \\
+$(3,5)$ & parity mismatch $(1,2)$ & $(22,54)$ (dead) \\
+$(3,7)$ & $(1,3)$ (dead) & parity mismatch $(22,55)$ \\
+$(5,13)$ & $(2,6)$ (dead) & parity mismatch $(23,50)$ \\
+$(6,12)$ & parity mismatch $(3,6)$ & parity mismatch $(23,50)$ \\
+$(6,14)$ & $(3,7)$ (dead) & $(23,51)$ (dead) \\
+$(7,11)$ & $(3,5)$ (dead) & parity mismatch $(24,49)$ \\
+$(8,10)$ & parity mismatch $(4,5)$ & parity mismatch $(24,49)$ \\
+$(10,26)$ & $(5,13)$ (dead) & $(25,57)$ (dead) \\
+$(11,25)$ & parity mismatch $(5,12)$ & $(26,56)$ (dead) \\
+$(11,27)$ & $(5,13)$ (dead) & parity mismatch $(26,57)$ \\
+$(12,24)$ & $(6,12)$ (dead) & $(26,56)$ (dead) \\
+$(12,28)$ & $(6,14)$ (dead) & $(26,58)$ (dead) \\
+$(13,29)$ & $(6,14)$ (dead) & parity mismatch $(27,58)$ \\
+$(15,23)$ & $(7,11)$ (dead) & parity mismatch $(28,63)$ \\
+$(16,20)$ & $(8,10)$ (dead) & $(28,62)$ (dead) \\
+$(16,22)$ & parity mismatch $(8,11)$ & parity mismatch $(28,63)$ \\
+$(21,53)$ & $(10,26)$ (dead) & parity mismatch $(31,46)$ \\
+$(21,55)$ & parity mismatch $(10,27)$ & $(31,47)$ (dead) \\
+$(22,54)$ & $(11,27)$ (dead) & $(31,47)$ (dead) \\
+$(23,51)$ & $(11,25)$ (dead) & parity mismatch $(32,45)$ \\
+$(24,48)$ & $(12,24)$ (dead) & $(32,44)$ (dead) \\
+$(25,57)$ & $(12,28)$ (dead) & parity mismatch $(33,40)$ \\
+$(26,56)$ & parity mismatch $(13,28)$ & parity mismatch $(33,40)$ \\
+$(26,58)$ & $(13,29)$ (dead) & $(33,41)$ (dead) \\
+$(28,62)$ & parity mismatch $(14,31)$ & parity mismatch $(34,43)$ \\
+$(31,47)$ & $(15,23)$ (dead) & parity mismatch $(36,35)$ \\
+$(32,44)$ & $(16,22)$ (dead) & $(36,34)$ (dead) \\
+$(33,41)$ & $(16,20)$ (dead) & parity mismatch $(37,32)$ \\
+$(36,34)$ & parity mismatch $(18,17)$ & parity mismatch $(38,37)$ \\
+\hline
+\end{tabular}
+\caption{Transitions of the $31$ dead states of side $(41,105)$ for Theorem~3.4.}
+\label{tab:app-34d41}
+\end{table}
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{lll}
+\hline
+Dead state $(c_{19}, m_{55})$ & Bit $0$ & Bit $1$ \\
+\hline
+$(3,5)$ & parity mismatch $(1,2)$ & $(11,25)$ (dead) \\
+$(7,11)$ & $(3,5)$ (dead) & parity mismatch $(13,30)$ \\
+$(8,10)$ & parity mismatch $(4,5)$ & parity mismatch $(13,30)$ \\
+$(10,24)$ & parity mismatch $(5,12)$ & parity mismatch $(14,23)$ \\
+$(11,25)$ & parity mismatch $(5,12)$ & $(15,23)$ (dead) \\
+$(15,23)$ & $(7,11)$ (dead) & parity mismatch $(17,16)$ \\
+\hline
+\end{tabular}
+\caption{Transitions of the $6$ dead states of side $(19,55)$ for Theorem~3.4.}
+\label{tab:app-34d19}
+\end{table}
+
+\subsection{Theorem~3.5: A115805 $\subsetneq$ A115823}
+\label{app:thm35}
+
+\paragraph{State definition.}
+Hypothesis $13k = C(29,k)$; conclusion $(8k) \mathbin{\mathrm{AND}} (13k) = 0$. The hypothesis side uses states $(c, m)$ for $13k + c = C(29,k) \oplus m$ under the uniform update rule with $a = 13$, $b = 29$. On live (``trim'') states we augment the state with the pending carry $c_8$ of $8k$, updating by $c_8' = \lfloor (c_8 + 8x)/2 \rfloor$, giving triples $(c, m, c_8)$ starting from $(0,0,0)$.
+
+\paragraph{Reachable states ($19$ hypothesis states: $6$ trim/live, $13$ dead).}
+\begin{itemize}
+  \item \emph{Trim / live ($6$; $5$ accepting with $c = m$):}
+  $(0,0,0)^*$, $(6,14,4)$, $(9,9,6)^*$, $(4,4,3)^*$, $(2,2,1)^*$, $(1,1,0)^*$.
+  \item \emph{Dead ($13$; all satisfy $c \ne m$ and step on both bits only into this dead set or parity mismatch):}
+  $(0,1)$, $(1,3)$, $(2,3)$, $(3,7)$, $(4,6)$, $(5,4)$, $(7,14)$, $(7,15)$, $(8,12)$, $(8,13)$, $(10,8)$, $(10,9)$, $(11,10)$.
+\end{itemize}
+
+\paragraph{Transition table and verification.}
+Table~\ref{tab:app-35} lists the transitions on all $6$ trim states (dead successors are given by their $(c, m)$ projection). On every trim state, the lowest bits of $8k + c_8$ and $13k + c$ never collide for any $x \in \{0,1\}$ that stays in the trim set, and on all $5$ accepting states $c_8 \mathbin{\mathrm{AND}} c = 0$ holds directly ($0 \mathbin{\mathrm{AND}} 0 = 6 \mathbin{\mathrm{AND}} 9 = 3 \mathbin{\mathrm{AND}} 4 = 1 \mathbin{\mathrm{AND}} 2 = 0 \mathbin{\mathrm{AND}} 1 = 0$), closing the strong induction. An independent sliding-window automaton verification confirms the result with $19$ reachable states ($6$ viable, $13$ non-viable) and all $4$ bit-collision transitions targeting non-viable states.
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{lll}
+\hline
+Trim state $(c, m, c_8)$ & Bit $0$ & Bit $1$ \\
+\hline
+$(0,0,0)^*$ & $(0,0,0)$ & $(6,14,4)$ \\
+$(6,14,4)$ & dead $(3,7)$ & $(9,9,6)$ \\
+$(9,9,6)^*$ & $(4,4,3)$ & dead $(11,10)$ \\
+$(4,4,3)^*$ & $(2,2,1)$ & dead $(8,12)$ \\
+$(2,2,1)^*$ & $(1,1,0)$ & dead $(7,15)$ \\
+$(1,1,0)^*$ & $(0,0,0)$ & dead $(7,14)$ \\
+\hline
+\end{tabular}
+\caption{Trim-state transitions for Theorem~3.5 (A115805 $\subsetneq$ A115823).}
+\label{tab:app-35}
+\end{table}
+
+\paragraph{Dead-state transitions.}
+Table~\ref{tab:app-35d} lists the transitions of every dead state $(c, m)$ of the hypothesis side. A dash means the state is parity-mismatched, so no input bit matches; every remaining successor is again dead. Hence no accepting run passes through a dead state, completing the certificate.
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{lll}
+\hline
+Dead state $(c, m)$ & Bit $0$ & Bit $1$ \\
+\hline
+$(0,1)$ & --- & --- \\
+$(1,3)$ & $(0,1)$ (dead) & $(7,15)$ (dead) \\
+$(2,3)$ & --- & --- \\
+$(3,7)$ & $(1,3)$ (dead) & $(8,13)$ (dead) \\
+$(4,6)$ & $(2,3)$ (dead) & $(8,13)$ (dead) \\
+$(5,4)$ & --- & --- \\
+$(7,14)$ & --- & --- \\
+$(7,15)$ & $(3,7)$ (dead) & $(10,9)$ (dead) \\
+$(8,12)$ & $(4,6)$ (dead) & $(10,8)$ (dead) \\
+$(8,13)$ & --- & --- \\
+$(10,8)$ & $(5,4)$ (dead) & $(11,10)$ (dead) \\
+$(10,9)$ & --- & --- \\
+$(11,10)$ & --- & --- \\
+\hline
+\end{tabular}
+\caption{Transitions of the $13$ dead states of side $(13,29)$ for Theorem~3.5.}
+\label{tab:app-35d}
+\end{table}
+
+\begin{thebibliography}{99}
+% Stubs: OEIS entries cited. TODO: add access dates and the exact
+% comment citations (author, date) as quoted in the subsections.
+\bibitem{oeisA048720} OEIS Foundation, \emph{A048720: carryless
+  multiplication}, \url{https://oeis.org/A048720}.
+\bibitem{oeisA115770} OEIS Foundation, \emph{A115770} and \emph{A391740},
+  \url{https://oeis.org/A115770}, \url{https://oeis.org/A391740}.
+\bibitem{oeisA115801} OEIS Foundation, \emph{A115801} and \emph{A391850},
+  \url{https://oeis.org/A115801}, \url{https://oeis.org/A391850}.
+\bibitem{oeisA115807} OEIS Foundation, \emph{A115807} and \emph{A048719},
+  \url{https://oeis.org/A115807}, \url{https://oeis.org/A048719}.
+\bibitem{oeisA115876} OEIS Foundation, \emph{A115876} and \emph{A115874},
+  \url{https://oeis.org/A115876}, \url{https://oeis.org/A115874}.
+\bibitem{oeisA115805} OEIS Foundation, \emph{A115805}, \emph{A115823},
+  \emph{A115767}, \emph{A115768}, \url{https://oeis.org/A115805},
+  \url{https://oeis.org/A115823}, \url{https://oeis.org/A115767},
+  \url{https://oeis.org/A115768}.
+\bibitem{oeisA048715} OEIS Foundation, \emph{A048715} (G.~Detlefs,
+  comment of Jun 08 2024), \url{https://oeis.org/A048715}.
+\bibitem{oeisA080148} OEIS Foundation, \emph{A080148} (G.~Detlefs,
+  comment of Dec 06 2011), \url{https://oeis.org/A080148}.
+\bibitem{oeisA036234} OEIS Foundation, \emph{A036234} (G.~Detlefs,
+  comment of Aug 05 2013), \url{https://oeis.org/A036234}.
+\bibitem{oeisA033199} OEIS Foundation, \emph{A033199} and \emph{A084865}
+  (G.~Detlefs, comments of May 26 2014),
+  \url{https://oeis.org/A033199}, \url{https://oeis.org/A084865}.
+\bibitem{oeisA067793} OEIS Foundation, \emph{A067793} (G.~Detlefs,
+  comment of Nov 16 2011), \url{https://oeis.org/A067793}.
+\bibitem{oeisA014062} OEIS Foundation, \emph{A014062} (G.~Detlefs,
+  Aug 06 2013; corrected by M.~Marcus, May 29 2015),
+  \url{https://oeis.org/A014062}.
+\bibitem{oeisA191060} OEIS Foundation, \emph{A191060} (G.~Detlefs,
+  comment of May 18 2014), \url{https://oeis.org/A191060}.
+\bibitem{oeisA045468} OEIS Foundation, \emph{A045468} (G.~Detlefs,
+  comment of Dec 29 2011), \url{https://oeis.org/A045468}.
+\bibitem{oeisA191059} OEIS Foundation, \emph{A191059} (G.~Detlefs,
+  comment of May 26 2014), \url{https://oeis.org/A191059}.
+\bibitem{oeisA019335} OEIS Foundation, \emph{A019335} (G.~Detlefs,
+  comment of May 21 2014), \url{https://oeis.org/A019335}.
+\bibitem{oeisMobius} OEIS Foundation, \emph{A003462},
+  \emph{A007051}, \emph{A168607}, \emph{A152011} (G.~Detlefs,
+  comments of Nov 16 2010), \url{https://oeis.org/A003462},
+  \url{https://oeis.org/A007051}, \url{https://oeis.org/A168607},
+  \url{https://oeis.org/A152011}.
+\bibitem{Cox2013}
+D.~A.~Cox, \emph{Primes of the Form $x^2 + ny^2$: Fermat, Class Field Theory, and Complex Multiplication}, 2nd~ed., Wiley, Hoboken, NJ, 2013. (For discriminant $-24$, see Ch.~1, \S\S 2--3 on genus theory.)
+
+\bibitem{McIntosh1995}
+R.~J.~McIntosh, On the converse of Wolstenholme's theorem, \emph{Acta Arith.} \textbf{71} (1995), 381--389, \url{https://doi.org/10.4064/aa-71-4-381-389}.
+
+\bibitem{trureturing2026}
+\texttt{trureturing} (The Omega Institute), \emph{Seven and Five Carryless Multiplier Equivalence} (Lean~4 formalization of $7k = C(11,k) \iff 5k = C(13,k)$), 2026, \url{https://github.com/the-omega-institute/trureturing-visualize} and \url{https://www.trureturing.org/}.
+
+\bibitem{A115801Note}
+A.~Karttunen, note on OEIS~A115801 asserting $9k = C(25,k) \iff 15k = C(19,k)$ (conjecture of Dec~21 2025), \url{https://oeis.org/A115801}.
+
+\bibitem{Stone2026}
+B.~Stone (with OpenAI Codex), \emph{Two strict containments for ordinary and carryless binary products} (resolution of $\text{A115774} \subseteq \text{A115772}$ and refutation of $\text{A115772} = \{x \mathbin{\mathrm{OR}} 4x\}$), GitHub repository, Nov~27 2026, \url{https://github.com/blakestone-x/math/blob/main/A115772/README.md}.
+
+\bibitem{Derekblair2026}
+\texttt{derekblair}, Resolution of the bound question for OEIS~A115861, GitHub repository, 2026. \url{https://github.com/derekblair/math-proofs}.
+
+\bibitem{Moto2026}
+T.~Moto, Artifacts: Lean~4 formalizations and verification scripts, \url{https://github.com/soux369/math}.
+\end{thebibliography}
+
+\end{document}
