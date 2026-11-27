@@ -46,6 +46,13 @@ strictness witness 99. Lean 4 formalization included.
 *Priority note:* no earlier proof found; first published proof and
 formalization known to us (checked 2026-11-27).
 
+### A115876 ⊊ A115874 — `a115876-subset-a115874/`
+Settles the "Subset of A115874?" cross-reference question: 41k = C(105, k)
+implies 19k = C(55, k) (40 parity-consistent states, 9 live coupled
+pairs); strictness witness 31. Lean 4 formalization included.
+*Priority note:* no earlier proof found; first published proof and
+formalization known to us (checked 2026-11-27).
+
 ## Conventions
 
 - One folder per result, named after the statement.
