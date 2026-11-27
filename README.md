@@ -89,6 +89,13 @@ binomial(k·prime(i), prime(i)) mod prime(i) (Lucas's theorem;
 Bertrand's postulate for the primality criterion).
 *Priority note:* no earlier proof found (checked 2026-11-27).
 
+### A067793: Detlefs's claim is false — `a067793-detlefs-disproof/`
+Disproves Detlefs's 2011 claim (counterexample 385 = 5·7·11) and
+gives the corrected picture: S(n) ≡ 0 (mod n) ⟺ gcd(n, 6) = 1, and
+φ(n) > 2n/3 ⟺ Π(1 − 1/p) > 2/3, with no bound on the number of
+distinct prime factors (smallest 3-prime member 715).
+*Priority note:* no earlier disproof found (checked 2026-11-27).
+
 ## Conventions
 
 - One folder per result, named after the statement.
