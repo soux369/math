@@ -117,6 +117,12 @@ modulo 11 iff p^(5n) mod 11 has minimal period 2, repeating
 (1, 0, 0, ...)).
 *Priority note:* no earlier proof found (checked 2026-11-27).
 
+### A045468: Detlefs's mod-210 characterization — `a045468-detlefs/`
+Proves Detlefs's 2011 claim: a prime p satisfies p mod 5 ∈ {1, 4}
+iff p^6 mod 210 = 1 (CRT across 210 = 2·3·5·7; for p > 7,
+p^6 mod 210 is 1 or 169 according to the mod-5 class).
+*Priority note:* no earlier proof found (checked 2026-11-27).
+
 ## Conventions
 
 - One folder per result, named after the statement.
