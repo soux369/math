@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+  @page { size: A4; margin: 22mm 20mm 20mm 20mm;
+    @bottom-center { content: "A115774 ⊊ A115772 — proof note"; font-size: 8pt; color: #888; } }
+  body { font-family: "DejaVu Serif", "Noto Serif CJK JP", serif; font-size: 10.5pt; line-height: 1.5; color: #111; }
+  h1 { font-size: 17pt; text-align: center; margin-bottom: 2mm; }
+  .subtitle { text-align: center; color: #444; font-size: 10pt; margin-bottom: 8mm; }
+  h2 { font-size: 12.5pt; margin-top: 7mm; border-bottom: 0.4pt solid #bbb; padding-bottom: 1mm; }
+  .theorem { border: 0.8pt solid #333; padding: 3mm 4mm; margin: 4mm 0; background: #fafafa; }
+  code, .mono { font-family: "DejaVu Sans Mono", monospace; font-size: 9.5pt; }
+  table { border-collapse: collapse; margin: 4mm auto; font-size: 9pt; }
+  th, td { border: 0.4pt solid #999; padding: 1.2mm 2mm; text-align: center; }
+  th { background: #eee; }
+  .small { font-size: 9pt; color: #333; }
+  .center { text-align: center; }
+</style>
+</head>
+<body>
+
+<h1>A115774 ⊊ A115772:<br>Proof of an OEIS Inclusion Conjecture</h1>
+<div class="subtitle">Proof note — November 27, 2026<br>
+An inclusion recorded as open in the OEIS cross-references since 2006<br>
+Repository: github.com/soux369/a115774-subset-a115772</div>
+
+<div class="theorem">
+<b>Theorem.</b> For every natural number <i>i</i>,
+<div class="center" style="margin:2mm 0;">15·<i>i</i> = C(23, <i>i</i>) &nbsp;⟹&nbsp; 13·<i>i</i> = C(21, <i>i</i>),</div>
+where C is carryless (GF(2)[X]) multiplication (OEIS A048720) and the left-hand
+sides are ordinary integer products. Hence A115774 ⊆ A115772, and the inclusion
+is strict: 15 ∈ A115772 ∖ A115774.
+</div>
+
+<p>Here A115774 = { <i>i</i> : 15<i>i</i> = C(23, <i>i</i>) } and
+A115772 = { <i>i</i> : 13<i>i</i> = C(21, <i>i</i>) } are rows of Karttunen's array
+A115872 of sets defined by congruences between ordinary and carryless products.
+The cross-references of the two OEIS entries had carried the inclusion
+“A115774 ⊆ A115772?” as an open question since 2006.</p>
+
+<h2>1&nbsp;&nbsp;The state machine for one equation</h2>
+
+<p>Fix odd <i>a, b</i> and process the bits of <i>i</i> from the LSB. After the low
+<i>t</i> bits <i>u</i> of <i>i</i> have been processed, define the <i>carry</i>
+c = ⌊<i>a·u</i> / 2<sup>t</sup>⌋ and the <i>mask</i> m = ⌊C(<i>b, u</i>) / 2<sup>t</sup>⌋.
+Initially (c, m) = (0, 0). On input bit <i>x</i> ∈ {0, 1}, the next bit of <i>a·i</i>
+is (c + <i>a·x</i>) mod 2 and the next bit of C(<i>b, i</i>) is (m ⊕ <i>b·x</i>) mod 2.
+Since <i>a</i> and <i>b</i> are odd, the two bits agree for either choice of <i>x</i>
+iff c ≡ m (mod 2); the state then updates to</p>
+
+<div class="center">c′ = ⌊(c + <i>a·x</i>)/2⌋, &nbsp;&nbsp; m′ = ⌊(m ⊕ <i>b·x</i>)/2⌋.</div>
+
+<p>If all bits match, then at the end (<i>t = L</i>, <i>u = i</i>) the equation
+<i>a·i</i> = C(<i>b, i</i>) holds iff c = m.</p>
+
+<h2>2&nbsp;&nbsp;The reachable state pairs</h2>
+
+<p>Run equation 1, (<i>a, b</i>) = (15, 23), and equation 2, (<i>a, b</i>) = (13, 21),
+in lockstep on the same input bits. Starting from ((0,0), (0,0)) and following every
+transition on which equation 1 does not break (c<sub>1</sub> ≡ m<sub>1</sub> (mod 2)),
+exactly <b>14 state pairs</b> are reachable:</p>
+
+<table>
+<tr><th>ID</th><th>s₁ = (c₁, m₁)</th><th>s₂ = (c₂, m₂)</th><th>c₁≡m₁</th><th>c₂≡m₂</th><th>c₁=m₁</th><th>c₂=m₂</th><th>x=0 →</th><th>x=1 →</th></tr>
+<tr><td>q₀</td><td>(0, 0)</td><td>(0, 0)</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>q₀</td><td>q₁</td></tr>
+<tr><td>q₁</td><td>(7, 11)</td><td>(6, 10)</td><td>✓</td><td>✓</td><td>–</td><td>–</td><td>q₂</td><td>q₃</td></tr>
+<tr><td>q₂</td><td>(3, 5)</td><td>(3, 5)</td><td>✓</td><td>✓</td><td>–</td><td>–</td><td>q₄</td><td>q₅</td></tr>
+<tr><td>q₃</td><td>(11, 14)</td><td>(9, 15)</td><td>✗</td><td>✓</td><td>–</td><td>–</td><td>⊥</td><td>⊥</td></tr>
+<tr><td>q₄</td><td>(1, 2)</td><td>(1, 2)</td><td>✗</td><td>✗</td><td>–</td><td>–</td><td>⊥</td><td>⊥</td></tr>
+<tr><td>q₅</td><td>(9, 9)</td><td>(8, 8)</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>q₆</td><td>q₇</td></tr>
+<tr><td>q₆</td><td>(4, 4)</td><td>(4, 4)</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>q₈</td><td>q₅</td></tr>
+<tr><td>q₇</td><td>(12, 15)</td><td>(10, 14)</td><td>✗</td><td>✓</td><td>–</td><td>–</td><td>⊥</td><td>⊥</td></tr>
+<tr><td>q₈</td><td>(2, 2)</td><td>(2, 2)</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>q₉</td><td>q₁₀</td></tr>
+<tr><td>q₉</td><td>(1, 1)</td><td>(1, 1)</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>q₀</td><td>q₁₁</td></tr>
+<tr><td>q₁₀</td><td>(8, 10)</td><td>(7, 11)</td><td>✓</td><td>✓</td><td>–</td><td>–</td><td>q₁₂</td><td>q₁₃</td></tr>
+<tr><td>q₁₁</td><td>(8, 11)</td><td>(7, 10)</td><td>✗</td><td>✗</td><td>–</td><td>–</td><td>⊥</td><td>⊥</td></tr>
+<tr><td>q₁₂</td><td>(4, 5)</td><td>(3, 5)</td><td>✗</td><td>✓</td><td>–</td><td>–</td><td>⊥</td><td>⊥</td></tr>
+<tr><td>q₁₃</td><td>(11, 14)</td><td>(10, 15)</td><td>✗</td><td>✗</td><td>–</td><td>–</td><td>⊥</td><td>⊥</td></tr>
+</table>
+
+<p class="small">(⊥ means equation 1's bit mismatches there regardless of the input
+bit, so no <i>i</i> satisfying equation 1 ever continues from such a state.)</p>
+
+<h2>3&nbsp;&nbsp;The two key observations</h2>
+
+<p><b>Parity preservation.</b> In all 8 states where equation 1 can proceed
+(c<sub>1</sub> ≡ m<sub>1</sub> (mod 2)), equation 2 can also proceed
+(c<sub>2</sub> ≡ m<sub>2</sub> (mod 2)).<br>
+<b>Terminal implication.</b> In all 14 states, c<sub>1</sub> = m<sub>1</sub> implies
+c<sub>2</sub> = m<sub>2</sub> (on this reachable set the two equalities are in fact
+equivalent).</p>
+
+<h2>4&nbsp;&nbsp;Induction</h2>
+
+<p>Let <i>i</i> = Σ x<sub>t</sub> 2<sup>t</sup> satisfy 15<i>i</i> = C(23, <i>i</i>).
+Induction on <i>t</i>: after <i>t</i> bits, both equations have matched on the low
+<i>t</i> bits and the joint state is in the table. The base case is q₀. For the step,
+equation 1 matching bit <i>t</i> forces c<sub>1</sub> ≡ m<sub>1</sub> (mod 2), so the
+joint state is one of the 8 active states; parity preservation then gives
+c<sub>2</sub> ≡ m<sub>2</sub> (mod 2), i.e. equation 2 also matches bit <i>t</i>; and
+the table is closed under both bits, so the next joint state is again in the table.
+At <i>t = L</i>, the terminal condition for equation 1 gives c<sub>1</sub> = m<sub>1</sub>,
+hence c<sub>2</sub> = m<sub>2</sub> by the terminal implication, which is the terminal
+condition for 13<i>i</i> = C(21, <i>i</i>). ∎</p>
+
+<h2>5&nbsp;&nbsp;Strictness</h2>
+
+<p>For <i>i</i> = 15: 13·15 = 195 = C(21, 15), while 15·15 = 225 ≠ 221 = C(23, 15).
+Thus 15 ∈ A115772 ∖ A115774 and the inclusion is strict:
+<b>A115774 ⊊ A115772</b>. ∎</p>
+
+<h2>6&nbsp;&nbsp;Verification</h2>
+
+<p>The proof is formalized in Lean 4 (file <span class="mono">A115774SubsetA115772.lean</span>,
+pure Lean 4.36.0, no Mathlib) and compiles with no errors and no <span class="mono">sorry</span>;
+<span class="mono">#print axioms</span> reports only the standard axioms
+[propext, Classical.choice, Quot.sound]. Independently, the reachable state-pair set
+was recomputed by BFS from the definitions and agrees with the table above exactly,
+and the inclusion was brute-force checked for all <i>i</i> &lt; 2<sup>20</sup>
+(459 members of A115774, no counterexample; the member list matches the OEIS prefix).</p>
+
+<p class="small">Provenance: the proof and formalization were produced by an AI agent
+(Gemini 4 Neon, task mode) from a brief by MONO; the closure, numeric checks and Lean
+compilation were independently reproduced by a second AI agent (Muse). The claim
+rests on the Lean kernel check and the independent recomputation.</p>
+
+</body>
+</html>

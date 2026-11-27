@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<style>
+  @page { size: A4; margin: 22mm 20mm 20mm 20mm;
+    @bottom-center { content: "A115772 ⊊ {x OR 4x} — proof note"; font-size: 8pt; color: #888; } }
+  body { font-family: "DejaVu Serif", "Noto Serif CJK JP", serif; font-size: 10.5pt; line-height: 1.5; color: #111; }
+  h1 { font-size: 16pt; text-align: center; margin-bottom: 2mm; }
+  .subtitle { text-align: center; color: #444; font-size: 10pt; margin-bottom: 8mm; }
+  h2 { font-size: 12.5pt; margin-top: 7mm; border-bottom: 0.4pt solid #bbb; padding-bottom: 1mm; }
+  .theorem { border: 0.8pt solid #333; padding: 3mm 4mm; margin: 4mm 0; background: #fafafa; }
+  .mono { font-family: "DejaVu Sans Mono", monospace; font-size: 9pt; }
+  table { border-collapse: collapse; margin: 4mm auto; font-size: 8.2pt; }
+  th, td { border: 0.4pt solid #999; padding: 1mm 1.6mm; text-align: center; }
+  th { background: #eee; }
+  .small { font-size: 9pt; color: #333; }
+  .center { text-align: center; }
+</style></head><body>
+
+<h1>A115772 ⊊ {x OR 4x}:<br>Detlefs's Conjecture on OEIS A115772 Is False</h1>
+<div class="subtitle">Proof note — November 27, 2026<br>
+Repository: github.com/soux369/a115772-detlefs-conjecture</div>
+
+<div class="theorem">
+<b>Theorem.</b> Let A115772 = { i : 13·i = C(21, i) }, where C is carryless
+(GF(2)[X]) multiplication (OEIS A048720). Then
+<div class="center" style="margin:2mm 0;">A115772 ⊊ { x OR 4x : x ≥ 0 }.</div>
+The inclusion ⊆ holds, but the equality conjectured by Detlefs (2010) fails:
+325 = 65 OR (4·65) satisfies 13·325 = 4225 ≠ 4097 = C(21, 325), so
+325 ∉ A115772. The two sets agree below 325.
+</div>
+
+<h2>1&nbsp;&nbsp;Disproof of the equality</h2>
+<p>Take x = 65 = 1000001<sub>2</sub>. Then 4x = 260 = 100000100<sub>2</sub> and
+i = x OR 4x = 101000101<sub>2</sub> = 325. As integers,
+13·325 = (2<sup>6</sup>+1)<sup>2</sup> = 2<sup>12</sup> + 2<sup>7</sup> + 1 = 4225,
+since 325 = 5·(2<sup>6</sup>+1) and 13·5 = 2<sup>6</sup>+1. In GF(2)[X], with
+21 = 1 + X<sup>2</sup> + X<sup>4</sup> and 325 = (1 + X<sup>2</sup>)(1 + X<sup>6</sup>),
+the cross terms cancel:
+C(21, 325) = (1 + X<sup>2</sup> + X<sup>4</sup>)(1 + X<sup>2</sup>)(1 + X<sup>6</sup>)
+= (1 + X<sup>6</sup>)<sup>2</sup> = 1 + X<sup>12</sup> = 4097.
+Hence 325 ∉ A115772. Direct computation shows the two sets coincide for all
+i &lt; 325; the next counterexamples are 335, 365, 367, 485.</p>
+
+<h2>2&nbsp;&nbsp;Proof of the inclusion</h2>
+<p>For the equation use the suffix state equation E(c, m, i) ⟺ c + 13i = m ⊕ C(21, i),
+with E(c, m, 0) ⟺ c = m. Splitting off the LSB b of i (13 and 21 are odd):
+E(c, m, i) ⟺ (c ≡ m mod 2) ∧ E(δ<sub>eq</sub>((c,m), b), ⌊i/2⌋), where
+δ<sub>eq</sub>((c,m), b) = (⌊(c + 13b)/2⌋, ⌊(m ⊕ 21b)/2⌋).
+For the right-hand side, bit j of x OR 4x is x<sub>j</sub> ∨ x<sub>j−2</sub>; the subset
+DFA over NFA states (x<sub>j−2</sub>, x<sub>j−1</sub>) has transition
+δ<sub>DFA</sub>(S, b) = { (b₁, x<sub>j</sub>) : ∃b₀, (b₀, b₁) ∈ S ∧ (x<sub>j</sub> ∨ b₀) = b }.
+Running both machines in lockstep from ((0,0), {00}), exactly <b>24 pairs</b> are
+reachable (16 with c ≡ m (mod 2), 8 boundary pairs with c ≢ m (mod 2)):</p>
+
+<table>
+<tr><th>ID</th><th>(c, m)</th><th>S</th><th>c≡m (2)</th><th>c=m</th><th>00∈S</th><th>x=0 →</th><th>x=1 →</th></tr>
+<tr><td>p0</td><td>(0, 0)</td><td>{00}</td><td>✓</td><td>✓</td><td>✓</td><td>((0, 0), {00})</td><td>((6, 10), {01})</td></tr>
+<tr><td>p1</td><td>(1, 1)</td><td>{00}</td><td>✓</td><td>✓</td><td>✓</td><td>((0, 0), {00})</td><td>((7, 10), {01})</td></tr>
+<tr><td>p2</td><td>(1, 2)</td><td>∅</td><td>✗</td><td>–</td><td>–</td><td>⊥</td><td>⊥</td></tr>
+<tr><td>p3</td><td>(2, 2)</td><td>{00}</td><td>✓</td><td>✓</td><td>✓</td><td>((1, 1), {00})</td><td>((7, 11), {01})</td></tr>
+<tr><td>p4</td><td>(2, 3)</td><td>∅</td><td>✗</td><td>–</td><td>–</td><td>⊥</td><td>⊥</td></tr>
+<tr><td>p5</td><td>(3, 3)</td><td>{00}</td><td>✓</td><td>✓</td><td>✓</td><td>((1, 1), {00})</td><td>((8, 11), {01})</td></tr>
+<tr><td>p6</td><td>(3, 5)</td><td>{10}</td><td>✓</td><td>–</td><td>–</td><td>((1, 2), ∅)</td><td>((8, 8), {00, 01})</td></tr>
+<tr><td>p7</td><td>(4, 4)</td><td>{00, 10}</td><td>✓</td><td>✓</td><td>✓</td><td>((2, 2), {00})</td><td>((8, 8), {00, 01})</td></tr>
+<tr><td>p8</td><td>(4, 7)</td><td>∅</td><td>✗</td><td>–</td><td>–</td><td>⊥</td><td>⊥</td></tr>
+<tr><td>p9</td><td>(5, 6)</td><td>∅</td><td>✗</td><td>–</td><td>–</td><td>⊥</td><td>⊥</td></tr>
+<tr><td>p10</td><td>(5, 7)</td><td>{10}</td><td>✓</td><td>–</td><td>–</td><td>((2, 3), ∅)</td><td>((9, 9), {00, 01})</td></tr>
+<tr><td>p11</td><td>(6, 6)</td><td>{00, 10}</td><td>✓</td><td>✓</td><td>✓</td><td>((3, 3), {00})</td><td>((9, 9), {00, 01})</td></tr>
+<tr><td>p12</td><td>(6, 10)</td><td>{01}</td><td>✓</td><td>–</td><td>–</td><td>((3, 5), {10})</td><td>((9, 15), {11})</td></tr>
+<tr><td>p13</td><td>(7, 10)</td><td>{01}</td><td>✗</td><td>–</td><td>–</td><td>⊥</td><td>⊥</td></tr>
+<tr><td>p14</td><td>(7, 11)</td><td>{01}</td><td>✓</td><td>–</td><td>–</td><td>((3, 5), {10})</td><td>((10, 15), {11})</td></tr>
+<tr><td>p15</td><td>(8, 8)</td><td>{00, 01}</td><td>✓</td><td>✓</td><td>✓</td><td>((4, 4), {00, 10})</td><td>((10, 14), {01, 11})</td></tr>
+<tr><td>p16</td><td>(8, 11)</td><td>{01}</td><td>✗</td><td>–</td><td>–</td><td>⊥</td><td>⊥</td></tr>
+<tr><td>p17</td><td>(9, 9)</td><td>{00, 01}</td><td>✓</td><td>✓</td><td>✓</td><td>((4, 4), {00, 10})</td><td>((11, 14), {01, 11})</td></tr>
+<tr><td>p18</td><td>(9, 15)</td><td>{11}</td><td>✓</td><td>–</td><td>–</td><td>((4, 7), ∅)</td><td>((11, 13), {10, 11})</td></tr>
+<tr><td>p19</td><td>(10, 14)</td><td>{01, 11}</td><td>✓</td><td>–</td><td>–</td><td>((5, 7), {10})</td><td>((11, 13), {10, 11})</td></tr>
+<tr><td>p20</td><td>(10, 15)</td><td>{11}</td><td>✗</td><td>–</td><td>–</td><td>⊥</td><td>⊥</td></tr>
+<tr><td>p21</td><td>(11, 13)</td><td>{10, 11}</td><td>✓</td><td>–</td><td>–</td><td>((5, 6), ∅)</td><td>((12, 12), {00, 01, 10, 11})</td></tr>
+<tr><td>p22</td><td>(11, 14)</td><td>{01, 11}</td><td>✗</td><td>–</td><td>–</td><td>⊥</td><td>⊥</td></tr>
+<tr><td>p23</td><td>(12, 12)</td><td>{00, 01, 10, 11}</td><td>✓</td><td>✓</td><td>✓</td><td>((6, 6), {00, 10})</td><td>((12, 12), {00, 01, 10, 11})</td></tr>
+</table>
+
+<p class="small">(⊥: the equation's bit mismatches there regardless of the input bit.
+Successors are shown as full pairs ((c′, m′), S′). This table was generated by an
+independent BFS implementation, not copied from the Lean source.)</p>
+
+<p>On all 24 pairs: <b>closure</b> — if c ≡ m (mod 2), both successors are again in
+the table; and <b>terminal implication</b> — c = m implies 00 ∈ S. Binary induction
+on i, reconstructing the witness x bit by bit through DFA predecessors, then gives:
+every i with 13i = C(21, i) is of the form x OR 4x. ∎</p>
+
+<h2>3&nbsp;&nbsp;Verification</h2>
+<p>The result is formalized in Lean 4 (<span class="mono">A115772Detlefs.lean</span>,
+pure Lean 4.36.0, no Mathlib) and compiles with no errors and no
+<span class="mono">sorry</span>; <span class="mono">#print axioms</span> reports
+[propext, Classical.choice, Quot.sound] for the inclusion and the strictness, and
+[propext, Quot.sound] for the disproof. Independently, the 24-pair reachable set was
+recomputed by BFS from the definitions (the source of the table above), the terminal
+implication was checked on every pair, the counterexample and its minimality were
+verified directly, and the inclusion was brute-force checked for all i &lt; 2<sup>20</sup>
+with no violation.</p>
+
+<p class="small">Provenance: the proof, counterexample search and formalization were
+produced by an AI agent (Gemini 4 Neon, task mode) from a brief by MONO; the closure,
+numeric checks and Lean compilation were independently reproduced by a second AI
+agent (Muse).</p>
+
+</body></html>
