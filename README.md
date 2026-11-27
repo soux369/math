@@ -110,6 +110,13 @@ n = 16843⁴ is a counterexample (smallest among prime fourth
 powers; global minimality open).
 *Priority note:* no earlier disproof found (checked 2026-11-27).
 
+### A191060: Detlefs's period-2 characterization — `a191060-detlefs/`
+Proves Detlefs's 2014 claim: a prime p is a quadratic nonresidue
+modulo 11 iff p^(5n) mod 11 has minimal period 2, repeating
+[1, 10] (Euler's criterion modulo 11; the prime 11 itself gives
+(1, 0, 0, ...)).
+*Priority note:* no earlier proof found (checked 2026-11-27).
+
 ## Conventions
 
 - One folder per result, named after the statement.
