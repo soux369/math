@@ -45,5 +45,5 @@ print("all such primes are 2,3 mod 5:",
 print("k=2 included:", 2 in lhs, "(ord_2(5) =", order_mod(5, 2), ")")
 print("first terms:", sorted(rhs)[:15])
 assert lhs == rhs and all(p % 5 in (2, 3) for p in rhs) and 2 in lhs
-assert sorted(rhs)[:10] == [2, 3, 7, 13, 17, 23, 37, 43, 47, 53] or True
+assert sorted(rhs)[:10] == [2, 3, 7, 17, 23, 37, 43, 47, 53, 73]
 print("ALL CHECKS PASS")

@@ -31,7 +31,8 @@ prime satisfies H_{p−1} ≡ 0 mod p³ — verified exhaustively), so this
 is the smallest counterexample among prime fourth powers.
 Minimality among all integers is open: composite n with at least
 two distinct prime factors are excluded only up to n ≤ 20000
-(filtered search); n ≤ 2000 is verified exhaustively here.
+(filtered search in the original computation; not reproduced by
+the bundled scripts); n ≤ 2000 is verified exhaustively here.
 
 **Files.**
 - `a014062-verify.py` — the arithmetic (n, n², n³), primality of

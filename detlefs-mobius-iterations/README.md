@@ -31,7 +31,8 @@ d = 1, −1, −4, 2(−1)^n respectively.
 ## Verification
 
 `verify.py` recomputes all four identities in exact rational
-arithmetic for 30 terms each (0 mismatches) and checks the closed
+arithmetic for n = 0..30 in claim (i) and n = 1..30 in claims
+(ii)–(iv) (0 mismatches) and checks the closed
 forms against the OEIS term lists. The proofs were also read and
 checked line by line independently of the proving system.
 

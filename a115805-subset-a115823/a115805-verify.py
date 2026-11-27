@@ -75,6 +75,9 @@ listed_rows = {
 print(f"    Neon listed rows: {len(listed_rows)}")
 print(f"    reachable but NOT listed: {sorted(reach - listed_rows)}")
 print(f"    listed but NOT reachable: {sorted(listed_rows - reach)}")
+# Known discrepancy in the prover's table: 6 of its 24 listed rows are
+# unreachable and 1 reachable state is unlisted. Harmless: the README
+# and the proof use the recomputed BFS numbers (19 reachable states).
 
 # ---------- (4) viability ----------
 # viable(s): S0 reachable from s in the H-transition graph (a valid k's

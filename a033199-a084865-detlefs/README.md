@@ -12,7 +12,7 @@ Both claims are true.
 **Proof.** The Fibonacci sequence mod 6 has Pisano period 24, so
 Fib(p) mod 6 depends only on p mod 24; the table gives
 Fib(p) mod 6 = 1 exactly at residues {1, 2, 7, 10, 17, 23} and
-Fib(p) mod 6 = 5 exactly at residues {5, 11, 13, 19, 22}.
+Fib(p) mod 6 = 5 exactly at residues {5, 11, 13, 14, 19, 22}.
 Intersecting with p mod 6 = 1 (residues {1, 7, 13, 19} mod 24) leaves
 {1, 7}; intersecting p mod 6 = 5 (residues {5, 11, 17, 23}) with the
 Fib ≡ 5 set leaves {5, 11} (the product (p mod 6)·(Fib(p) mod 6)
