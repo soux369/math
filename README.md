@@ -103,6 +103,13 @@ period 24 + Cox's classical criteria for discriminant −24;
 exceptions 2, 3 for the second form).
 *Priority note:* no earlier proof found (checked 2026-11-27).
 
+### A014062: Detlefs's conjecture is false — `a014062-detlefs-disproof/`
+Disproves Detlefs's claim on a(n) = binomial(n², n): for an odd
+prime p, a(p⁴) ≡ p⁴ (mod p¹²) ⟺ p is a Wolstenholme prime, so
+n = 16843⁴ is a counterexample (smallest among prime fourth
+powers; global minimality open).
+*Priority note:* no earlier disproof found (checked 2026-11-27).
+
 ## Conventions
 
 - One folder per result, named after the statement.
