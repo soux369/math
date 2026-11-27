@@ -96,6 +96,13 @@ gives the corrected picture: S(n) ≡ 0 (mod n) ⟺ gcd(n, 6) = 1, and
 distinct prime factors (smallest 3-prime member 715).
 *Priority note:* no earlier disproof found (checked 2026-11-27).
 
+### A033199 + A084865: Detlefs's Fibonacci characterizations — `a033199-a084865-detlefs/`
+Proves Detlefs's 2014 claims: primes of the form x² + 6y² (resp.
+2x² + 3y²) are characterized by Fib(p) mod 6 conditions (Pisano
+period 24 + Cox's classical criteria for discriminant −24;
+exceptions 2, 3 for the second form).
+*Priority note:* no earlier proof found (checked 2026-11-27).
+
 ## Conventions
 
 - One folder per result, named after the statement.
